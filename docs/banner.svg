@@ -100,8 +100,8 @@
         font-size="13" fill="#a6adc8" text-anchor="middle"
         letter-spacing="4">RED TEAM SSH WRAPPER</text>
 
-  <!-- Feature badges — row 1 -->
-  <g transform="translate(68, 200)">
+  <!-- Feature badges — row 1 (centered: 4 badges, 595px total, offset 102) -->
+  <g transform="translate(102, 200)">
     <rect x="0" y="0" width="130" height="28" rx="14" fill="#313244"/>
     <rect x="0" y="0" width="130" height="28" rx="14" fill="none" stroke="#45475a" stroke-width="0.5"/>
     <circle cx="18" cy="14" r="4" fill="#a6e3a1"/>
@@ -127,8 +127,8 @@
           font-size="11" fill="#cdd6f4">session logging</text>
   </g>
 
-  <!-- Feature badges — row 2 -->
-  <g transform="translate(98, 235)">
+  <!-- Feature badges — row 2 (centered: 3 badges, 500px total, offset 150) -->
+  <g transform="translate(150, 235)">
     <rect x="0" y="0" width="150" height="28" rx="14" fill="#313244"/>
     <rect x="0" y="0" width="150" height="28" rx="14" fill="none" stroke="#45475a" stroke-width="0.5"/>
     <circle cx="18" cy="14" r="4" fill="#74c7ec"/>
