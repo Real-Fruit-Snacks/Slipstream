@@ -1,0 +1,34 @@
+# Build artifacts
+/target
+debug/
+*.pdb
+slipstream-*
+
+# Loot directories (engagement data)
+loot/
+loot_*/
+
+# AI/agent state files
+.omc/
+.claude/
+*.jsonl
+notepad.md
+project-memory.json
+
+# Superpowers planning docs (AI-generated)
+docs/superpowers/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Slipstream session data
+.config/slipstream/

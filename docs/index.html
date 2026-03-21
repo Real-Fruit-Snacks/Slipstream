@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slipstream — Red Team SSH Wrapper</title>
+  <meta name="description" content="Rust SSH wrapper for red team operations. PTY-based, tunnels, file transfers, passive filesystem mapping, session logging. Works on Linux and Windows targets.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* =========================================================
+       SLIPSTREAM LANDING PAGE
+       Catppuccin Mocha palette — dark terminal aesthetic
+       Blue/Sapphire/Mauve accent shift
+       ========================================================= */
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --ctp-rosewater: #f5e0dc;
+      --ctp-flamingo: #f2cdcd;
+      --ctp-pink: #f5c2e7;
+      --ctp-mauve: #cba6f7;
+      --ctp-red: #f38ba8;
+      --ctp-maroon: #eba0ac;
+      --ctp-peach: #fab387;
+      --ctp-yellow: #f9e2af;
+      --ctp-green: #a6e3a1;
+      --ctp-teal: #94e2d5;
+      --ctp-sky: #89dceb;
+      --ctp-sapphire: #74c7ec;
+      --ctp-blue: #89b4fa;
+      --ctp-lavender: #b4befe;
+      --ctp-text: #cdd6f4;
+      --ctp-subtext1: #bac2de;
+      --ctp-subtext0: #a6adc8;
+      --ctp-overlay2: #9399b2;
+      --ctp-overlay1: #7f849c;
+      --ctp-overlay0: #6c7086;
+      --ctp-surface2: #585b70;
+      --ctp-surface1: #45475a;
+      --ctp-surface0: #313244;
+      --ctp-base: #1e1e2e;
+      --ctp-mantle: #181825;
+      --ctp-crust: #11111b;
+
+      /* Slipstream accent: blue/sapphire/mauve */
+      --slip-primary: var(--ctp-blue);
+      --slip-secondary: var(--ctp-sapphire);
+      --slip-accent: var(--ctp-mauve);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: var(--ctp-surface1) var(--ctp-crust);
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: var(--ctp-crust);
+      color: var(--ctp-text);
+      line-height: 1.7;
+      font-size: 15px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ---- Dot-grid background pattern ---- */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(var(--ctp-surface0) 1px, transparent 1px);
+      background-size: 24px 24px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ---- CRT scanline overlay ---- */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ---- Layout ---- */
+    .page-wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section {
+      margin-bottom: 96px;
+    }
+
+    a {
+      color: var(--ctp-sapphire);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: var(--ctp-blue);
+    }
+
+    /* ---- Section titles ---- */
+    .section-label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--ctp-overlay0);
+      border: 1px solid var(--ctp-surface1);
+      padding: 4px 12px;
+      border-radius: 2px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 700;
+      color: var(--ctp-text);
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .section-desc {
+      color: var(--ctp-subtext0);
+      font-size: 14px;
+      max-width: 600px;
+      margin-bottom: 40px;
+    }
+
+    /* =========================================================
+       HERO
+       ========================================================= */
+    .hero {
+      padding: 80px 0 48px;
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .hero-terminal {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      background: var(--ctp-mantle);
+      max-width: 780px;
+      margin: 0 auto;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px var(--ctp-surface0),
+        0 24px 80px -12px rgba(0, 0, 0, 0.6),
+        0 0 120px -40px rgba(137, 180, 250, 0.1);
+    }
+
+    .hero-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .hero-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .hero-dot--red    { background: var(--ctp-red); }
+    .hero-dot--yellow { background: var(--ctp-yellow); }
+    .hero-dot--green  { background: var(--ctp-green); }
+
+    .hero-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+      letter-spacing: 0.05em;
+    }
+
+    .hero-body {
+      padding: 48px 40px 56px;
+    }
+
+    .hero-title {
+      font-size: clamp(42px, 7vw, 72px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 8px;
+      background: linear-gradient(
+        135deg,
+        var(--ctp-blue) 0%,
+        var(--ctp-sapphire) 35%,
+        var(--ctp-lavender) 65%,
+        var(--ctp-mauve) 100%
+      );
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(137, 180, 250, 0.2));
+    }
+
+    .hero-cursor {
+      display: inline-block;
+      width: 3px;
+      height: 0.8em;
+      background: var(--ctp-blue);
+      margin-left: 4px;
+      vertical-align: baseline;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    .hero-tagline {
+      font-size: clamp(14px, 2vw, 17px);
+      color: var(--ctp-subtext0);
+      margin-bottom: 36px;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+
+    .hero-tagline em {
+      color: var(--ctp-subtext1);
+      font-style: normal;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 36px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      text-align: center;
+    }
+
+    .hero-stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .hero-stat:nth-child(1) .hero-stat-value { color: var(--ctp-blue); }
+    .hero-stat:nth-child(2) .hero-stat-value { color: var(--ctp-sapphire); }
+    .hero-stat:nth-child(3) .hero-stat-value { color: var(--ctp-mauve); }
+    .hero-stat:nth-child(4) .hero-stat-value { color: var(--ctp-red); }
+
+    .hero-stat-label {
+      font-size: 11px;
+      color: var(--ctp-overlay1);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--ctp-blue);
+      color: var(--ctp-crust);
+      border-color: var(--ctp-blue);
+    }
+
+    .btn-primary:hover {
+      background: var(--ctp-sapphire);
+      border-color: var(--ctp-sapphire);
+      color: var(--ctp-crust);
+      box-shadow: 0 0 24px rgba(137, 180, 250, 0.3);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ctp-subtext1);
+      border-color: var(--ctp-surface1);
+    }
+
+    .btn-ghost:hover {
+      color: var(--ctp-text);
+      border-color: var(--ctp-overlay0);
+      background: var(--ctp-surface0);
+    }
+
+    /* =========================================================
+       FEATURES GRID
+       ========================================================= */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--ctp-mantle);
+      border: 1px solid var(--ctp-surface0);
+      border-radius: 6px;
+      padding: 28px 24px;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--ctp-blue), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--ctp-surface1);
+      background: var(--ctp-base);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 16px;
+      display: block;
+      width: 44px;
+      height: 44px;
+      line-height: 44px;
+      text-align: center;
+      background: var(--ctp-surface0);
+      border-radius: 8px;
+      border: 1px solid var(--ctp-surface1);
+    }
+
+    .feature-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ctp-text);
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 13px;
+      color: var(--ctp-subtext0);
+      line-height: 1.6;
+    }
+
+    .feature-card:nth-child(1):hover { border-color: var(--ctp-blue); }
+    .feature-card:nth-child(1):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-blue), transparent); }
+
+    .feature-card:nth-child(2):hover { border-color: var(--ctp-sapphire); }
+    .feature-card:nth-child(2):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-sapphire), transparent); }
+
+    .feature-card:nth-child(3):hover { border-color: var(--ctp-teal); }
+    .feature-card:nth-child(3):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-teal), transparent); }
+
+    .feature-card:nth-child(4):hover { border-color: var(--ctp-mauve); }
+    .feature-card:nth-child(4):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-mauve), transparent); }
+
+    .feature-card:nth-child(5):hover { border-color: var(--ctp-peach); }
+    .feature-card:nth-child(5):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-peach), transparent); }
+
+    .feature-card:nth-child(6):hover { border-color: var(--ctp-red); }
+    .feature-card:nth-child(6):hover::before { background: linear-gradient(90deg, transparent, var(--ctp-red), transparent); }
+
+    /* =========================================================
+       ARCHITECTURE
+       ========================================================= */
+    .arch-terminal {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--ctp-mantle);
+      box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    .arch-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .arch-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    .arch-body {
+      padding: 32px;
+    }
+
+    .arch-divider {
+      border: none;
+      border-top: 1px dashed var(--ctp-surface1);
+      margin: 28px 0;
+    }
+
+    /* ---- Main data flow: horizontal top row ---- */
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 0;
+      flex-wrap: nowrap;
+    }
+
+    .flow-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .flow-node-box {
+      padding: 14px 24px;
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 6px;
+      background: var(--ctp-base);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ctp-blue);
+      white-space: nowrap;
+    }
+
+    .flow-node-box--accent {
+      color: var(--ctp-sapphire);
+      border-color: rgba(116, 199, 236, 0.3);
+    }
+
+    .flow-node-box--target {
+      color: var(--ctp-mauve);
+      border-color: rgba(203, 166, 247, 0.3);
+    }
+
+    .flow-node-label {
+      font-size: 11px;
+      color: var(--ctp-overlay1);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .flow-arrows {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--ctp-overlay1);
+      white-space: nowrap;
+    }
+
+    .flow-arrow-line {
+      width: 60px;
+      height: 1px;
+      background: var(--ctp-surface2);
+      position: relative;
+    }
+
+    .flow-arrow-line::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      top: -3px;
+      border: 3px solid transparent;
+      border-left: 5px solid var(--ctp-surface2);
+    }
+
+    .flow-arrow--left .flow-arrow-line::after {
+      right: auto;
+      left: -1px;
+      border-left: none;
+      border-right: 5px solid var(--ctp-surface2);
+    }
+
+    .flow-arrow-tag {
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: var(--ctp-surface0);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+
+    .flow-arrow-tag--pty  { color: var(--ctp-blue); }
+    .flow-arrow-tag--ssh  { color: var(--ctp-sapphire); }
+    .flow-arrow-tag--net  { color: var(--ctp-mauve); }
+
+    /* ---- Vertical sub-components beneath Slipstream node ---- */
+    .arch-sub-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .arch-sub-card {
+      border: 1px solid var(--ctp-surface0);
+      border-radius: 6px;
+      padding: 16px 18px;
+      background: var(--ctp-base);
+    }
+
+    .arch-sub-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ctp-subtext1);
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    .arch-sub-item {
+      font-size: 11px;
+      color: var(--ctp-overlay1);
+      padding: 3px 0;
+      border-bottom: 1px solid var(--ctp-surface0);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .arch-sub-item:last-child {
+      border-bottom: none;
+    }
+
+    .arch-sub-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* =========================================================
+       CROSS-PLATFORM SECTION
+       ========================================================= */
+    .platform-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .platform-card {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--ctp-mantle);
+      box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.3);
+    }
+
+    .platform-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .platform-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    .platform-body {
+      padding: 24px;
+    }
+
+    .platform-body h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ctp-text);
+      margin-bottom: 16px;
+    }
+
+    .platform-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--ctp-subtext0);
+      line-height: 1.5;
+    }
+
+    .platform-item .p-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 7px;
+    }
+
+    .p-dot--linux { background: var(--ctp-green); }
+    .p-dot--win   { background: var(--ctp-blue); }
+
+    /* =========================================================
+       INTERNALS / CAPABILITIES
+       ========================================================= */
+    .capabilities-section {
+      text-align: center;
+    }
+
+    .capabilities-terminal {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--ctp-mantle);
+      box-shadow:
+        0 0 0 1px var(--ctp-surface0),
+        0 32px 80px -16px rgba(0, 0, 0, 0.5),
+        0 0 160px -60px rgba(137, 180, 250, 0.07);
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .capabilities-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .capabilities-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    .capabilities-body {
+      padding: 32px;
+    }
+
+    .capabilities-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .capability-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--ctp-surface0);
+      border-radius: 4px;
+      background: var(--ctp-base);
+      font-size: 13px;
+      color: var(--ctp-subtext1);
+      transition: all 0.2s;
+    }
+
+    .capability-pill:hover {
+      border-color: var(--ctp-surface2);
+      background: var(--ctp-surface0);
+    }
+
+    .capability-pill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot--ssh      { background: var(--ctp-green); }
+    .dot--tunnel   { background: var(--ctp-blue); }
+    .dot--transfer { background: var(--ctp-teal); }
+    .dot--mapper   { background: var(--ctp-mauve); }
+    .dot--session  { background: var(--ctp-peach); }
+    .dot--qol      { background: var(--ctp-red); }
+
+    .capabilities-legend {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--ctp-overlay1);
+    }
+
+    .capabilities-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* =========================================================
+       QUICK START
+       ========================================================= */
+    .start-terminal {
+      border: 1px solid var(--ctp-surface1);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--ctp-mantle);
+      box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    .start-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--ctp-crust);
+      border-bottom: 1px solid var(--ctp-surface0);
+    }
+
+    .start-titlebar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    .start-body {
+      padding: 28px 32px;
+    }
+
+    .start-line {
+      margin-bottom: 4px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .start-line .prompt {
+      color: var(--ctp-blue);
+      user-select: none;
+    }
+
+    .start-line .prompt-inner {
+      color: var(--ctp-sapphire);
+      user-select: none;
+    }
+
+    .start-line .cmd {
+      color: var(--ctp-text);
+    }
+
+    .start-line .comment {
+      color: var(--ctp-overlay0);
+    }
+
+    .start-line .flag {
+      color: var(--ctp-peach);
+    }
+
+    .start-line .arg {
+      color: var(--ctp-yellow);
+    }
+
+    .start-line .str {
+      color: var(--ctp-green);
+    }
+
+    .start-line .bang {
+      color: var(--ctp-red);
+      font-weight: 600;
+    }
+
+    .start-spacer {
+      height: 14px;
+    }
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
+    .site-footer {
+      border-top: 1px solid var(--ctp-surface0);
+      padding: 48px 0;
+      text-align: center;
+      margin-top: 32px;
+    }
+
+    .footer-tagline {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ctp-subtext1);
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+
+    .footer-sub {
+      font-size: 13px;
+      color: var(--ctp-overlay1);
+      margin-bottom: 28px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--ctp-overlay1);
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--ctp-blue);
+    }
+
+    .footer-copy {
+      font-size: 12px;
+      color: var(--ctp-overlay0);
+    }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+    @media (max-width: 900px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .hero-body {
+        padding: 36px 24px 44px;
+      }
+      .hero-stats {
+        gap: 24px;
+      }
+      .platform-grid {
+        grid-template-columns: 1fr;
+      }
+      .arch-sub-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        font-size: 14px;
+      }
+      .page-wrap {
+        padding: 0 16px;
+      }
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+      .capabilities-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      section {
+        margin-bottom: 64px;
+      }
+      .hero {
+        padding: 48px 0 32px;
+      }
+      .hero-body {
+        padding: 28px 20px 36px;
+      }
+      .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+      .btn {
+        width: 100%;
+        max-width: 260px;
+        justify-content: center;
+      }
+      .arch-body {
+        padding: 20px;
+      }
+      .flow-diagram {
+        gap: 0;
+      }
+      .flow-node-box {
+        padding: 10px 14px;
+        font-size: 12px;
+      }
+      .flow-arrows {
+        padding: 0 8px;
+      }
+      .flow-arrow-line {
+        width: 36px;
+      }
+      .start-body {
+        padding: 20px;
+      }
+      .start-line {
+        font-size: 12px;
+      }
+      .feature-card {
+        padding: 22px 20px;
+      }
+    }
+
+    /* ---- Selection highlight ---- */
+    ::selection {
+      background: rgba(137, 180, 250, 0.25);
+      color: var(--ctp-text);
+    }
+
+    /* ---- Focus styles for accessibility ---- */
+    a:focus-visible,
+    .btn:focus-visible {
+      outline: 2px solid var(--ctp-blue);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top">
+    <div class="hero-terminal">
+      <div class="hero-titlebar">
+        <span class="hero-dot hero-dot--red"></span>
+        <span class="hero-dot hero-dot--yellow"></span>
+        <span class="hero-dot hero-dot--green"></span>
+        <span class="hero-titlebar-text">slipstream &mdash;&mdash; red team ssh wrapper</span>
+      </div>
+      <div class="hero-body">
+        <h1 class="hero-title">SLIPSTREAM<span class="hero-cursor" aria-hidden="true"></span></h1>
+        <p class="hero-tagline">
+          SSH wrapper for red team operations. Wraps the real ssh binary via PTY &mdash;<br>
+          <em>tunnels, transfers, mapping, logging. All flags pass through. Linux and Windows targets.</em>
+        </p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-value">2.4 MB</div>
+            <div class="hero-stat-label">Binary Size</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">118</div>
+            <div class="hero-stat-label">Tests</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">~6.4K</div>
+            <div class="hero-stat-label">Lines of Rust</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value">0</div>
+            <div class="hero-stat-label">Dependencies</div>
+          </div>
+        </div>
+        <div class="hero-buttons">
+          <a href="https://github.com/Real-Fruit-Snacks/Slipstream" class="btn btn-primary">View on GitHub</a>
+          <a href="#commands" class="btn btn-ghost">Documentation</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section id="features">
+    <span class="section-label">// capabilities</span>
+    <h2 class="section-title">Wrapped. Logged. Mapped.</h2>
+    <p class="section-desc">
+      Everything you need during an engagement without changing how you work. All SSH flags pass through unchanged &mdash; Slipstream stays invisible while building a full picture of the target.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128196;</span>
+        <h3>PTY Wrapper</h3>
+        <p>Wraps the real ssh binary. All flags, -o options, and ~/.ssh/config pass through unchanged. Your workflow doesn't change &mdash; Slipstream just listens.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128268;</span>
+        <h3>Tunnel Management</h3>
+        <p>iptables-style syntax. Real SSH forwarding via control socket. Add, delete, list, flush, save, and restore tunnels per target. SOCKS, local, and reverse forwards.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128228;</span>
+        <h3>File Transfers</h3>
+        <p>Upload and download with SFTP&rarr;SCP&rarr;cat&rarr;base64 fallback chain. Windows paths handled automatically via forward-slash conversion. Works even on locked-down targets.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128273;</span>
+        <h3>Filesystem Mapper</h3>
+        <p>Passive output parsing. Builds a searchable map from ls, dir, find, net user, and ipconfig. No extra commands sent &mdash; it reads what's already on screen.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#128221;</span>
+        <h3>Session Logging</h3>
+        <p>Per-command log files with timestamps. Session index for OSCP proof and engagement reporting. Every command, every response, automatically captured.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#127919;</span>
+        <h3>Auto-Loot</h3>
+        <p>One command grabs passwd, shadow, SAM, systeminfo, ipconfig, privileges, users, processes, and network connections. Triage in seconds, not minutes.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section id="architecture">
+    <span class="section-label">// architecture</span>
+    <h2 class="section-title">Data flow &amp; component model.</h2>
+    <p class="section-desc">
+      Slipstream sits transparently between the operator and the SSH child process. The PTY layer intercepts all I/O &mdash; commands trigger built-in handlers, output feeds the passive mapper and logger.
+    </p>
+
+    <div class="arch-terminal">
+      <div class="arch-titlebar">
+        <span class="hero-dot hero-dot--red"></span>
+        <span class="hero-dot hero-dot--yellow"></span>
+        <span class="hero-dot hero-dot--green"></span>
+        <span class="arch-titlebar-text">slipstream &mdash;&mdash; data flow</span>
+      </div>
+      <div class="arch-body">
+        <!-- Top-level flow diagram -->
+        <div class="flow-diagram">
+          <div class="flow-node">
+            <div class="flow-node-box">Operator</div>
+            <div class="flow-node-label">Terminal</div>
+          </div>
+
+          <div class="flow-arrows">
+            <div class="flow-arrow">
+              <div class="flow-arrow-line"></div>
+              <span class="flow-arrow-tag flow-arrow-tag--pty">stdin</span>
+            </div>
+            <div class="flow-arrow flow-arrow--left">
+              <span class="flow-arrow-tag flow-arrow-tag--pty">stdout</span>
+              <div class="flow-arrow-line"></div>
+            </div>
+          </div>
+
+          <div class="flow-node">
+            <div class="flow-node-box flow-node-box--accent">Slipstream PTY</div>
+            <div class="flow-node-label">Interceptor</div>
+          </div>
+
+          <div class="flow-arrows">
+            <div class="flow-arrow">
+              <div class="flow-arrow-line"></div>
+              <span class="flow-arrow-tag flow-arrow-tag--ssh">passthrough</span>
+            </div>
+            <div class="flow-arrow flow-arrow--left">
+              <span class="flow-arrow-tag flow-arrow-tag--ssh">output</span>
+              <div class="flow-arrow-line"></div>
+            </div>
+          </div>
+
+          <div class="flow-node">
+            <div class="flow-node-box">SSH Child</div>
+            <div class="flow-node-label">Real Binary</div>
+          </div>
+
+          <div class="flow-arrows">
+            <div class="flow-arrow">
+              <div class="flow-arrow-line"></div>
+              <span class="flow-arrow-tag flow-arrow-tag--net">encrypted</span>
+            </div>
+            <div class="flow-arrow flow-arrow--left">
+              <span class="flow-arrow-tag flow-arrow-tag--net">encrypted</span>
+              <div class="flow-arrow-line"></div>
+            </div>
+          </div>
+
+          <div class="flow-node">
+            <div class="flow-node-box flow-node-box--target">Target</div>
+            <div class="flow-node-label">Linux / Windows</div>
+          </div>
+        </div>
+
+        <hr class="arch-divider">
+
+        <!-- Sub-components beneath Slipstream PTY -->
+        <div class="arch-sub-grid">
+          <div class="arch-sub-card">
+            <div class="arch-sub-title" style="color: var(--ctp-red);">! Commands</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-red);"></span> !tunnel, !upload, !download</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-red);"></span> !loot, !map, !exec</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-red);"></span> !note, !help, !sessions</div>
+          </div>
+
+          <div class="arch-sub-card">
+            <div class="arch-sub-title" style="color: var(--ctp-peach);">Log Engine</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-peach);"></span> Per-command log files</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-peach);"></span> Timestamped session index</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-peach);"></span> Boundary detection</div>
+          </div>
+
+          <div class="arch-sub-card">
+            <div class="arch-sub-title" style="color: var(--ctp-mauve);">FS Mapper</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-mauve);"></span> Passive output parsing</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-mauve);"></span> ls / dir / find parsers</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-mauve);"></span> CWD tracker</div>
+          </div>
+        </div>
+
+        <hr class="arch-divider">
+
+        <!-- SSH master socket layer -->
+        <div class="arch-sub-grid" style="grid-template-columns: 1fr 1fr; max-width: 680px; margin: 0 auto;">
+          <div class="arch-sub-card">
+            <div class="arch-sub-title" style="color: var(--ctp-sapphire);">Master Socket</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-sapphire);"></span> ControlMaster multiplexing</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-sapphire);"></span> ssh -O tunnel operations</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-sapphire);"></span> Fingerprint capture</div>
+          </div>
+          <div class="arch-sub-card">
+            <div class="arch-sub-title" style="color: var(--ctp-teal);">Tunnels / Transfers</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-teal);"></span> SOCKS / local / reverse</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-teal);"></span> SFTP &rarr; SCP &rarr; cat &rarr; b64</div>
+            <div class="arch-sub-item"><span class="arch-sub-dot" style="background: var(--ctp-teal);"></span> Save / restore per target</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CROSS-PLATFORM ============ -->
+  <section id="platforms">
+    <span class="section-label">// cross-platform</span>
+    <h2 class="section-title">Linux targets and Windows targets.</h2>
+    <p class="section-desc">
+      Slipstream adapts to the remote OS automatically. Parser selection, prompt injection, and path handling all switch based on detected target type.
+    </p>
+
+    <div class="platform-grid">
+      <div class="platform-card">
+        <div class="platform-titlebar">
+          <span class="hero-dot hero-dot--red"></span>
+          <span class="hero-dot hero-dot--yellow"></span>
+          <span class="hero-dot hero-dot--green"></span>
+          <span class="platform-titlebar-text">linux &mdash;&mdash; target detection</span>
+        </div>
+        <div class="platform-body">
+          <h3 style="color: var(--ctp-green);">Linux Targets</h3>
+          <div class="platform-item"><span class="p-dot p-dot--linux"></span> Parse ls, find, tree, /etc/passwd, ip a output passively</div>
+          <div class="platform-item"><span class="p-dot p-dot--linux"></span> PROMPT_COMMAND injection for CWD tracking</div>
+          <div class="platform-item"><span class="p-dot p-dot--linux"></span> Forward-slash paths throughout &mdash; no conversion needed</div>
+          <div class="platform-item"><span class="p-dot p-dot--linux"></span> SFTP-first transfer with cat/base64 fallback</div>
+          <div class="platform-item"><span class="p-dot p-dot--linux"></span> loot targets /etc/passwd, /etc/shadow, privileges, processes</div>
+        </div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-titlebar">
+          <span class="hero-dot hero-dot--red"></span>
+          <span class="hero-dot hero-dot--yellow"></span>
+          <span class="hero-dot hero-dot--green"></span>
+          <span class="platform-titlebar-text">windows &mdash;&mdash; target detection</span>
+        </div>
+        <div class="platform-body">
+          <h3 style="color: var(--ctp-blue);">Windows Targets</h3>
+          <div class="platform-item"><span class="p-dot p-dot--win"></span> Parse dir, net user, ipconfig, systeminfo passively</div>
+          <div class="platform-item"><span class="p-dot p-dot--win"></span> PowerShell prompt injection for CWD tracking</div>
+          <div class="platform-item"><span class="p-dot p-dot--win"></span> Auto forward-slash conversion for SCP compatibility</div>
+          <div class="platform-item"><span class="p-dot p-dot--win"></span> loot targets SAM, systeminfo, ipconfig, net user</div>
+          <div class="platform-item"><span class="p-dot p-dot--win"></span> Backslash-to-slash path rewriting on all transfers</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ INTERNALS ============ -->
+  <section class="capabilities-section" id="internals">
+    <span class="section-label">// internals</span>
+    <h2 class="section-title">Every capability, mapped.</h2>
+    <p class="section-desc" style="margin-left:auto;margin-right:auto;">
+      Six subsystems. Thirty capabilities. One binary that wraps your existing ssh workflow without altering it.
+    </p>
+
+    <div class="capabilities-terminal">
+      <div class="capabilities-titlebar">
+        <span class="hero-dot hero-dot--red"></span>
+        <span class="hero-dot hero-dot--yellow"></span>
+        <span class="hero-dot hero-dot--green"></span>
+        <span class="capabilities-titlebar-text">slipstream &mdash;&mdash; component map</span>
+      </div>
+      <div class="capabilities-body">
+        <div class="capabilities-grid">
+          <!-- SSH (green) -->
+          <div class="capability-pill"><span class="dot dot--ssh"></span> PTY Spawn</div>
+          <div class="capability-pill"><span class="dot dot--ssh"></span> Argument Passthrough</div>
+          <div class="capability-pill"><span class="dot dot--ssh"></span> Binary Discovery</div>
+          <div class="capability-pill"><span class="dot dot--ssh"></span> Master Socket</div>
+          <div class="capability-pill"><span class="dot dot--ssh"></span> Fingerprint Capture</div>
+          <!-- Tunnels (blue) -->
+          <div class="capability-pill"><span class="dot dot--tunnel"></span> SOCKS Proxy</div>
+          <div class="capability-pill"><span class="dot dot--tunnel"></span> Local Forward</div>
+          <div class="capability-pill"><span class="dot dot--tunnel"></span> Reverse Forward</div>
+          <div class="capability-pill"><span class="dot dot--tunnel"></span> Save / Restore</div>
+          <div class="capability-pill"><span class="dot dot--tunnel"></span> SSH -O Forward</div>
+          <!-- Transfers (teal) -->
+          <div class="capability-pill"><span class="dot dot--transfer"></span> SFTP Method</div>
+          <div class="capability-pill"><span class="dot dot--transfer"></span> SCP Method</div>
+          <div class="capability-pill"><span class="dot dot--transfer"></span> Cat Method</div>
+          <div class="capability-pill"><span class="dot dot--transfer"></span> Base64 Method</div>
+          <div class="capability-pill"><span class="dot dot--transfer"></span> Fallback Chain</div>
+          <!-- Mapper (mauve) -->
+          <div class="capability-pill"><span class="dot dot--mapper"></span> ls Parser</div>
+          <div class="capability-pill"><span class="dot dot--mapper"></span> dir Parser</div>
+          <div class="capability-pill"><span class="dot dot--mapper"></span> find Parser</div>
+          <div class="capability-pill"><span class="dot dot--mapper"></span> net user Parser</div>
+          <div class="capability-pill"><span class="dot dot--mapper"></span> ipconfig Parser</div>
+          <div class="capability-pill"><span class="dot dot--mapper"></span> CWD Tracker</div>
+          <!-- Session (peach) -->
+          <div class="capability-pill"><span class="dot dot--session"></span> Per-Command Logs</div>
+          <div class="capability-pill"><span class="dot dot--session"></span> Session Index</div>
+          <div class="capability-pill"><span class="dot dot--session"></span> Boundary Detection</div>
+          <div class="capability-pill"><span class="dot dot--session"></span> Target Identity</div>
+          <!-- QOL (red) -->
+          <div class="capability-pill"><span class="dot dot--qol"></span> Auto-Loot</div>
+          <div class="capability-pill"><span class="dot dot--qol"></span> Target Notes</div>
+          <div class="capability-pill"><span class="dot dot--qol"></span> Exec via Socket</div>
+          <div class="capability-pill"><span class="dot dot--qol"></span> Help System</div>
+        </div>
+        <div class="capabilities-legend">
+          <span><span class="dot dot--ssh" style="display:inline-block;width:6px;height:6px;border-radius:50%;"></span> SSH</span>
+          <span><span class="dot dot--tunnel" style="display:inline-block;width:6px;height:6px;border-radius:50%;"></span> Tunnels</span>
+          <span><span class="dot dot--transfer" style="display:inline-block;width:6px;height:6px;border-radius:50%;"></span> Transfers</span>
+          <span><span class="dot dot--mapper" style="display:inline-block;width:6px;height:6px;border-radius:50%;"></span> Mapper</span>
+          <span><span class="dot dot--session" style="display:inline-block;width:6px;height:6px;border-radius:50%;"></span> Session</span>
+          <span><span class="dot dot--qol" style="display:inline-block;width:6px;height:6px;border-radius:50%;"></span> QOL</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUICK START ============ -->
+  <section id="commands">
+    <span class="section-label">// quick start</span>
+    <h2 class="section-title">Build and connect.</h2>
+    <p class="section-desc">
+      Cargo build. Drop in your PATH. Connect exactly as you would with ssh &mdash; every flag, every option, every config entry still works.
+    </p>
+
+    <div class="start-terminal">
+      <div class="start-titlebar">
+        <span class="hero-dot hero-dot--red"></span>
+        <span class="hero-dot hero-dot--yellow"></span>
+        <span class="hero-dot hero-dot--green"></span>
+        <span class="start-titlebar-text">bash &mdash;&mdash; build &amp; connect</span>
+      </div>
+      <div class="start-body">
+        <div class="start-line"><span class="comment"># Build</span></div>
+        <div class="start-line"><span class="prompt">$</span> <span class="cmd">cargo build </span><span class="flag">--release</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Connect (all SSH flags work)</span></div>
+        <div class="start-line"><span class="prompt">$</span> <span class="cmd">slipstream ssh </span><span class="arg">user@10.10.10.5</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Inside the session — use ! commands</span></div>
+        <div class="start-line"><span class="prompt-inner">slipstream&gt;</span> <span class="bang">!</span><span class="cmd">help</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Add a SOCKS proxy on port 1080</span></div>
+        <div class="start-line"><span class="prompt-inner">slipstream&gt;</span> <span class="bang">!</span><span class="cmd">tunnel add </span><span class="flag">--type </span><span class="arg">socks </span><span class="flag">-p </span><span class="arg">1080</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Upload a file to the target</span></div>
+        <div class="start-line"><span class="prompt-inner">slipstream&gt;</span> <span class="bang">!</span><span class="cmd">upload </span><span class="str">linpeas.sh</span> <span class="arg">/tmp/</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Grab common loot (passwd, shadow, SAM, etc.)</span></div>
+        <div class="start-line"><span class="prompt-inner">slipstream&gt;</span> <span class="bang">!</span><span class="cmd">loot</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Search the passive filesystem map</span></div>
+        <div class="start-line"><span class="prompt-inner">slipstream&gt;</span> <span class="bang">!</span><span class="cmd">map</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Run a command via the control socket (no new pty)</span></div>
+        <div class="start-line"><span class="prompt-inner">slipstream&gt;</span> <span class="bang">!</span><span class="cmd">exec </span><span class="arg">whoami</span></div>
+        <div class="start-spacer"></div>
+        <div class="start-line"><span class="comment"># Add a note about this target</span></div>
+        <div class="start-line"><span class="prompt-inner">slipstream&gt;</span> <span class="bang">!</span><span class="cmd">note </span><span class="str">This is the DC</span></div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /.page-wrap -->
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="page-wrap">
+    <p class="footer-tagline">Rust. Cross-platform. Zero config.</p>
+    <p class="footer-sub">Slipstream &mdash; SSH wrapper for red team operations</p>
+    <div class="footer-links">
+      <a href="https://github.com/Real-Fruit-Snacks/Slipstream">GitHub</a>
+    </div>
+    <p class="footer-copy">Rust &middot; Linux + Windows &middot; PTY Wrapper &middot; Session Logging &middot; Passive Mapping</p>
+    <p class="footer-copy" style="margin-top: 16px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.5;"><strong style="color: var(--ctp-subtext1);">For authorized use only.</strong> This tool is intended for legitimate security research, authorized penetration testing, and educational purposes. Unauthorized access to computer systems is illegal. Users are solely responsible for ensuring compliance with all applicable laws and obtaining proper authorization before use.</p>
+  </div>
+</footer>
+
+</body>
+</html>
