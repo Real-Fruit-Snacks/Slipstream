@@ -1,114 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" fill="none">
   <defs>
-    <!-- Primary gradient: deep blue to indigo -->
-    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0284c7"/>
-      <stop offset="40%" stop-color="#2563eb"/>
+      <stop offset="50%" stop-color="#2563eb"/>
       <stop offset="100%" stop-color="#6366f1"/>
     </linearGradient>
-
-    <!-- Upper wrapper gradient: deep blue to blue -->
-    <linearGradient id="gWrapUpper" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#0284c7"/>
-      <stop offset="100%" stop-color="#2563eb"/>
-    </linearGradient>
-
-    <!-- Lower wrapper gradient: blue to indigo -->
-    <linearGradient id="gWrapLower" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#6366f1"/>
-    </linearGradient>
-
-    <!-- Faint outer glow -->
-    <filter id="softglow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur"/>
-      <feFlood flood-color="#0284c7" flood-opacity="0.1" result="color"/>
-      <feComposite in="color" in2="blur" operator="in" result="shadow"/>
-      <feComposite in="SourceGraphic" in2="shadow" operator="over"/>
+    <radialGradient id="glow" cx="50%" cy="40%" r="40%">
+      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.08"/>
+      <stop offset="50%" stop-color="#2563eb" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="textglow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
   </defs>
-
-  <!-- ===================== LOGOMARK ===================== -->
-  <g transform="translate(58, 40)" filter="url(#softglow)">
-
-    <!-- Hexagonal frame — thin, elegant -->
-    <path d="M 80 6 L 140 38 L 140 102 L 80 134 L 20 102 L 20 38 Z"
-          fill="none" stroke="url(#g1)" stroke-width="1.5" opacity="0.35"/>
-
-    <!-- Inner hex subtle fill -->
-    <path d="M 80 14 L 134 42 L 134 98 L 80 126 L 26 98 L 26 42 Z"
-          fill="#0284c7" opacity="0.04"/>
-
-    <!-- === THE WRAPPER DESIGN === -->
-
-    <!-- Center horizontal arrow — the SSH passthrough (teal) -->
-    <line x1="34" y1="70" x2="122" y2="70"
-          stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
-    <!-- Arrowhead -->
-    <path d="M 118 65 L 126 70 L 118 75" stroke="#0d9488" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
-
-    <!-- Upper wrapper curve — swoops down from above to touch center, then back up -->
-    <path d="M 32 38 C 48 36, 52 54, 62 70 C 72 86, 76 70, 80 70 C 84 70, 88 54, 98 70 C 108 86, 112 36, 128 38"
-          stroke="url(#gWrapUpper)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.85"/>
-
-    <!-- Lower wrapper curve — swoops up from below to touch center, then back down -->
-    <path d="M 32 102 C 48 104, 52 86, 62 70 C 72 54, 76 70, 80 70 C 84 70, 88 86, 98 70 C 108 54, 112 104, 128 102"
-          stroke="url(#gWrapLower)" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.85"/>
-
-    <!-- Intercept nodes — where wrapper touches center line (! command intercept points) -->
-    <circle cx="62" cy="70" r="3" fill="#0284c7" opacity="0.95"/>
-    <circle cx="80" cy="70" r="3" fill="#0284c7" opacity="0.95"/>
-    <circle cx="98" cy="70" r="3" fill="#0284c7" opacity="0.95"/>
-
-    <!-- Entry node (left, teal) -->
-    <circle cx="34" cy="70" r="3" fill="#0d9488" opacity="0.8"/>
-
-    <!-- Exit node (right, indigo) -->
-    <circle cx="126" cy="70" r="3" fill="#6366f1" opacity="0.8"/>
-
-    <!-- Subtle particle dots along upper wrapper path -->
-    <circle cx="42" cy="38" r="1.5" fill="#0284c7" opacity="0.45"/>
-    <circle cx="54" cy="52" r="1.2" fill="#2563eb" opacity="0.35"/>
-    <circle cx="72" cy="80" r="1.2" fill="#0284c7" opacity="0.3"/>
-    <circle cx="90" cy="58" r="1.2" fill="#2563eb" opacity="0.35"/>
-    <circle cx="108" cy="48" r="1.5" fill="#0284c7" opacity="0.45"/>
-    <circle cx="120" cy="38" r="1.2" fill="#2563eb" opacity="0.35"/>
-
-    <!-- Subtle particle dots along lower wrapper path -->
-    <circle cx="42" cy="102" r="1.5" fill="#2563eb" opacity="0.45"/>
-    <circle cx="54" cy="88" r="1.2" fill="#6366f1" opacity="0.35"/>
-    <circle cx="72" cy="58" r="1.2" fill="#2563eb" opacity="0.3"/>
-    <circle cx="90" cy="82" r="1.2" fill="#6366f1" opacity="0.35"/>
-    <circle cx="108" cy="92" r="1.5" fill="#2563eb" opacity="0.45"/>
-    <circle cx="120" cy="102" r="1.2" fill="#6366f1" opacity="0.35"/>
-
-    <!-- Corner accents on hex -->
-    <circle cx="80" cy="6" r="2" fill="#06b6d4" opacity="0.25"/>
-    <circle cx="80" cy="134" r="2" fill="#2563eb" opacity="0.25"/>
-  </g>
-
-  <!-- ===================== TYPOGRAPHY ===================== -->
-
-  <!-- "SLIPSTREAM" — clean, bold, wide-tracked -->
-  <text x="430" y="100"
-        font-family="'SF Pro Display', 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-        font-size="62" font-weight="800" letter-spacing="10"
-        fill="url(#g1)" text-anchor="middle">SLIPSTREAM</text>
-
-  <!-- Thin separator line -->
-  <line x1="270" y1="118" x2="590" y2="118"
-        stroke="url(#g1)" stroke-width="0.8" opacity="0.2"/>
-
-  <!-- Tagline — refined, subtle -->
-  <text x="430" y="142"
-        font-family="'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace"
-        font-size="11.5" font-weight="400" letter-spacing="5.5"
-        fill="#57534e" text-anchor="middle">SSH WRAPPER FOR RED TEAMS</text>
-
-  <!-- Descriptor — very subtle -->
-  <text x="430" y="162"
-        font-family="'SF Mono', 'JetBrains Mono', 'Fira Code', monospace"
-        font-size="9" font-weight="400" letter-spacing="3"
-        fill="#a8a29e" text-anchor="middle">RUST  ·  PTY  ·  TUNNELS  ·  LOGGING</text>
+  <ellipse cx="210" cy="45" rx="160" ry="40" fill="url(#glow)"/>
+  <text x="210" y="52" text-anchor="middle" font-family="'Inter', 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="800" fill="url(#grad)" letter-spacing="4" filter="url(#textglow)">SLIPSTREAM</text>
+  <line x1="105" y1="68" x2="315" y2="68" stroke="url(#grad)" stroke-width="0.6" opacity="0.2"/>
+  <text x="210" y="84" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="10" font-weight="400" fill="#6c6f85" letter-spacing="5">SSH WRAPPER FOR RED TEAMS</text>
+  <text x="210" y="100" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace" font-size="7.5" font-weight="400" fill="#9ca0b0" letter-spacing="3">RUST  ·  PTY  ·  TUNNELS  ·  LOGGING</text>
 </svg>

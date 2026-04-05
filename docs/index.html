@@ -3,946 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slipstream — SSH Wrapper for Red Team Operations</title>
-    <meta name="description" content="Rust SSH wrapper for red team operations. PTY-based drop-in ssh replacement with tunnel management, file transfers, passive filesystem mapping, per-command session logging, and target identity by fingerprint.">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E">
+    <title>Slipstream — SSH Wrapper for Red Teams</title>
+    <meta name="description" content="Drop-in SSH replacement with tunnel management, file transfers, passive filesystem mapping, and per-command session logging. Written in Rust.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' text-anchor='middle' font-family='Inter,sans-serif' font-size='24' font-weight='800' fill='%2374c7ec'%3ES%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --red: #f38ba8;
-            --maroon: #eba0ac;
-            --pink: #f5c2e7;
-            --mauve: #cba6f7;
-            --lavender: #b4befe;
-            --blue: #89b4fa;
-            --sapphire: #74c7ec;
-            --sky: #89dceb;
-            --teal: #94e2d5;
-            --green: #a6e3a1;
-            --yellow: #f9e2af;
-            --peach: #fab387;
-            --text: #cdd6f4;
-            --subtext1: #bac2de;
-            --subtext0: #a6adc8;
-            --overlay2: #9399b2;
-            --overlay1: #7f849c;
-            --overlay0: #6c7086;
-            --surface2: #585b70;
-            --surface1: #45475a;
-            --surface0: #313244;
-            --base: #1e1e2e;
-            --mantle: #181825;
-            --crust: #11111b;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--base);
-            color: var(--text);
-            line-height: 1.7;
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image: radial-gradient(circle, var(--overlay0) 1px, transparent 1px);
-            background-size: 24px 24px;
-            opacity: 0.15;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1) 1px, transparent 1px, transparent 2px);
-            pointer-events: none;
-            z-index: 999;
-            opacity: 0.4;
-        }
-
-        ::selection { background: rgba(116, 199, 236, 0.3); color: var(--text); }
-
-        code {
-            font-family: 'JetBrains Mono', monospace;
-            background: var(--mantle);
-            padding: 2px 7px;
-            border-radius: 3px;
-            font-size: 0.88em;
-            color: var(--green);
-        }
-
-        .container { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
-
-        /* ── Hero ── */
-        .hero {
-            padding: 100px 0 70px;
-            text-align: center;
-            position: relative;
-        }
-
-        .hero::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            right: 10%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--surface1), transparent);
-        }
-
-        .hero-logo {
-            max-width: 480px;
-            margin: 0 auto 32px;
-        }
-
-        .hero-logo img { width: 100%; height: auto; }
-
-        .hero-sub {
-            font-size: 17px;
-            color: var(--subtext0);
-            max-width: 640px;
-            margin: 0 auto 16px;
-        }
-
-        .hero-warning {
-            font-size: 12px;
-            color: var(--overlay0);
-            font-family: 'JetBrains Mono', monospace;
-            max-width: 580px;
-            margin: 0 auto 36px;
-            padding: 10px 16px;
-            border: 1px solid var(--surface0);
-            border-radius: 6px;
-            background: var(--mantle);
-        }
-
-        .hero-stats {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin-bottom: 36px;
-            flex-wrap: wrap;
-        }
-
-        .stat { text-align: center; }
-
-        .stat-val {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 26px;
-            font-weight: 700;
-            line-height: 1.2;
-        }
-
-        .stat:nth-child(1) .stat-val { color: var(--sapphire); }
-        .stat:nth-child(2) .stat-val { color: var(--blue); }
-        .stat:nth-child(3) .stat-val { color: var(--lavender); }
-        .stat:nth-child(4) .stat-val { color: var(--mauve); }
-        .stat:nth-child(5) .stat-val { color: var(--teal); }
-
-        .stat-label {
-            font-size: 11px;
-            color: var(--overlay1);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .hero-ctas {
-            display: flex;
-            gap: 14px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 28px;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-        }
-
-        .btn-primary {
-            background: var(--sapphire);
-            color: var(--crust);
-            border-color: var(--sapphire);
-        }
-
-        .btn-primary:hover {
-            background: var(--blue);
-            border-color: var(--blue);
-            box-shadow: 0 0 20px rgba(116, 199, 236, 0.25);
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--subtext1);
-            border-color: var(--surface1);
-        }
-
-        .btn-ghost:hover {
-            color: var(--text);
-            border-color: var(--overlay0);
-            background: var(--surface0);
-        }
-
-        /* ── Sections ── */
-        section {
-            padding: 80px 0;
-            position: relative;
-        }
-
-        section + section { border-top: 1px solid var(--surface0); }
-
-        h2 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: var(--text);
-        }
-
-        .section-desc {
-            color: var(--subtext0);
-            font-size: 15px;
-            max-width: 600px;
-            margin-bottom: 40px;
-        }
-
-        .section-tag {
-            display: inline-block;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--overlay0);
-            margin-bottom: 12px;
-        }
-
-        /* ── Mode Cards (! commands) ── */
-        .modes-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-        }
-
-        .mode-card {
-            background: var(--mantle);
-            border: 1px solid var(--surface0);
-            border-radius: 8px;
-            padding: 24px;
-            transition: all 0.25s;
-        }
-
-        .mode-card:hover {
-            border-color: var(--surface1);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
-        }
-
-        .mode-cmd {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .mode-cmd .bang { color: var(--red); }
-        .mode-cmd .cmd { color: var(--sapphire); }
-
-        .mode-card p {
-            font-size: 13px;
-            color: var(--subtext0);
-            line-height: 1.6;
-        }
-
-        /* ── Features Grid ── */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-        }
-
-        .feature-card {
-            background: var(--mantle);
-            border: 1px solid var(--surface0);
-            border-radius: 8px;
-            padding: 28px 24px;
-            transition: all 0.25s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--sapphire), transparent);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .feature-card:hover {
-            border-color: var(--surface1);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
-        }
-
-        .feature-card:hover::before { opacity: 1; }
-
-        .feature-card:nth-child(1):hover { border-color: var(--sapphire); }
-        .feature-card:nth-child(1):hover::before { background: linear-gradient(90deg, transparent, var(--sapphire), transparent); }
-        .feature-card:nth-child(2):hover { border-color: var(--blue); }
-        .feature-card:nth-child(2):hover::before { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
-        .feature-card:nth-child(3):hover { border-color: var(--teal); }
-        .feature-card:nth-child(3):hover::before { background: linear-gradient(90deg, transparent, var(--teal), transparent); }
-        .feature-card:nth-child(4):hover { border-color: var(--mauve); }
-        .feature-card:nth-child(4):hover::before { background: linear-gradient(90deg, transparent, var(--mauve), transparent); }
-        .feature-card:nth-child(5):hover { border-color: var(--peach); }
-        .feature-card:nth-child(5):hover::before { background: linear-gradient(90deg, transparent, var(--peach), transparent); }
-        .feature-card:nth-child(6):hover { border-color: var(--red); }
-        .feature-card:nth-child(6):hover::before { background: linear-gradient(90deg, transparent, var(--red), transparent); }
-
-        .feature-icon {
-            font-size: 22px;
-            margin-bottom: 14px;
-            display: block;
-            width: 42px;
-            height: 42px;
-            line-height: 42px;
-            text-align: center;
-            background: var(--surface0);
-            border-radius: 8px;
-            border: 1px solid var(--surface1);
-        }
-
-        .feature-card h3 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .feature-card p {
-            font-size: 13px;
-            color: var(--subtext0);
-            line-height: 1.6;
-        }
-
-        /* ── Capabilities ── */
-        .capabilities {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-
-        .capability {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            border: 1px solid var(--surface0);
-            border-radius: 20px;
-            font-size: 13px;
-            color: var(--subtext1);
-            font-family: 'JetBrains Mono', monospace;
-            transition: all 0.2s;
-        }
-
-        .capability:hover {
-            border-color: var(--surface2);
-            background: var(--surface0);
-        }
-
-        .cap-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .cap-dot.full { background: var(--green); }
-        .cap-dot.partial { background: var(--yellow); }
-        .cap-dot.none { background: var(--surface2); }
-
-        /* ── Architecture ── */
-        .arch-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        .arch-card {
-            background: var(--mantle);
-            border: 1px solid var(--surface0);
-            border-radius: 8px;
-            padding: 28px 24px;
-            transition: all 0.2s;
-        }
-
-        .arch-card:hover {
-            border-color: var(--surface1);
-        }
-
-        .arch-num {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 32px;
-            font-weight: 800;
-            color: var(--surface1);
-            margin-bottom: 8px;
-        }
-
-        .arch-card h3 {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text);
-        }
-
-        .arch-card p {
-            font-size: 13px;
-            color: var(--subtext0);
-            line-height: 1.6;
-        }
-
-        /* ── Terminal ── */
-        .terminal {
-            background: var(--crust);
-            border: 1px solid var(--surface0);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .terminal-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: var(--mantle);
-            border-bottom: 1px solid var(--surface0);
-        }
-
-        .terminal-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--surface1);
-        }
-
-        .terminal-dot:nth-child(1) { background: var(--red); opacity: 0.8; }
-        .terminal-dot:nth-child(2) { background: var(--yellow); opacity: 0.8; }
-        .terminal-dot:nth-child(3) { background: var(--green); opacity: 0.8; }
-
-        .terminal-label {
-            flex: 1;
-            text-align: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            color: var(--overlay0);
-        }
-
-        .terminal-body {
-            padding: 20px 24px;
-        }
-
-        .terminal-body pre {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            line-height: 1.8;
-            color: var(--text);
-            white-space: pre;
-            overflow-x: auto;
-        }
-
-        .terminal-body .p { color: var(--green); }
-        .terminal-body .c { color: var(--overlay0); }
-        .terminal-body .v { color: var(--sapphire); }
-        .terminal-body .f { color: var(--peach); }
-        .terminal-body .b { color: var(--red); font-weight: 600; }
-        .terminal-body .a { color: var(--yellow); }
-
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .cursor {
-            display: inline-block;
-            width: 8px;
-            height: 15px;
-            background: var(--sapphire);
-            animation: blink 1s step-end infinite;
-            vertical-align: text-bottom;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        /* ── Detection ── */
-        .detect-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .detect-card {
-            border-radius: 8px;
-            padding: 28px 24px;
-            border: 1px solid var(--surface0);
-        }
-
-        .detect-hidden {
-            background: rgba(166, 227, 161, 0.05);
-            border-color: rgba(166, 227, 161, 0.15);
-        }
-
-        .detect-visible {
-            background: rgba(243, 139, 168, 0.05);
-            border-color: rgba(243, 139, 168, 0.15);
-        }
-
-        .detect-card h3 {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 14px;
-        }
-
-        .detect-hidden h3 { color: var(--green); }
-        .detect-visible h3 { color: var(--red); }
-
-        .detect-card ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .detect-card li {
-            font-size: 13px;
-            color: var(--subtext0);
-            padding: 6px 0;
-            border-bottom: 1px solid var(--surface0);
-            line-height: 1.5;
-        }
-
-        .detect-card li:last-child { border-bottom: none; }
-
-        /* ── Footer ── */
-        footer {
-            background: var(--crust);
-            border-top: 1px solid var(--surface0);
-            padding: 60px 0 40px;
-        }
-
-        .footer-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 32px;
-            margin-bottom: 40px;
-        }
-
-        footer h4 {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--subtext1);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 16px;
-        }
-
-        footer ul { list-style: none; padding: 0; }
-
-        footer li { margin-bottom: 8px; }
-
-        footer a {
-            color: var(--overlay1);
-            text-decoration: none;
-            font-size: 13px;
-            transition: color 0.2s;
-        }
-
-        footer a:hover { color: var(--sapphire); }
-
-        footer p {
-            font-size: 13px;
-            color: var(--overlay1);
-            line-height: 1.6;
-        }
-
-        .footer-bottom {
-            text-align: center;
-            padding-top: 24px;
-            border-top: 1px solid var(--surface0);
-            font-size: 12px;
-            color: var(--overlay0);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* ── Responsive ── */
-        @media (max-width: 900px) {
-            .modes-grid, .features-grid { grid-template-columns: repeat(2, 1fr); }
-            .arch-grid { grid-template-columns: 1fr; }
-            .two-col { grid-template-columns: 1fr; }
-            .detect-grid { grid-template-columns: 1fr; }
-            .footer-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-
-        @media (max-width: 600px) {
-            .modes-grid, .features-grid { grid-template-columns: 1fr; }
-            .hero { padding: 60px 0 40px; }
-            .hero-stats { gap: 24px; }
-            .capabilities { grid-template-columns: repeat(2, 1fr); }
-            .hero-ctas { flex-direction: column; align-items: center; }
-            .btn { width: 100%; max-width: 260px; justify-content: center; }
-            .footer-grid { grid-template-columns: 1fr; }
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--accent1:#74c7ec;--accent2:#b4befe;--accentmid:#89b4fa;--accentrgb:116,199,236;--text:#cdd6f4;--sub1:#bac2de;--sub0:#a6adc8;--ov2:#9399b2;--ov1:#7f849c;--ov0:#6c7086;--sf2:#585b70;--sf1:#45475a;--sf0:#313244;--base:#1e1e2e;--mantle:#181825;--crust:#11111b;--green:#a6e3a1;--yellow:#f9e2af;--red:#f38ba8;--peach:#fab387;--mauve:#cba6f7;--teal:#94e2d5}
+        body{font-family:'Inter',system-ui,sans-serif;background:var(--crust);color:var(--text);line-height:1.7;overflow-x:hidden}
+        ::selection{background:rgba(var(--accentrgb),0.3);color:var(--text)}
+        .container{max-width:1140px;margin:0 auto;padding:0 28px}
+        code{font-family:'JetBrains Mono',monospace;background:var(--mantle);padding:2px 7px;border-radius:3px;font-size:.88em;color:var(--green)}
+        .nav{position:fixed;top:0;left:0;right:0;height:56px;background:rgba(17,17,27,0.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(49,50,68,0.5);z-index:1000;display:flex;align-items:center;justify-content:center}
+        .nav-inner{max-width:1140px;width:100%;padding:0 28px;display:flex;align-items:center;justify-content:space-between}
+        .nav-logo{font-size:16px;font-weight:700;color:var(--text);text-decoration:none}
+        .nav-links{display:flex;align-items:center;gap:28px}
+        .nav-links a{font-size:13px;font-weight:500;color:var(--ov0);text-decoration:none;transition:color .2s}
+        .nav-links a:hover{color:var(--text)}
+        .nav-cta{background:linear-gradient(135deg,var(--accent1),var(--accentmid));color:var(--crust);padding:7px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;transition:box-shadow .2s,transform .2s}
+        .nav-cta:hover{box-shadow:0 0 20px rgba(var(--accentrgb),0.3);transform:translateY(-1px)}
+        .hero{padding:140px 0 80px;text-align:center;position:relative}
+        .hero::before{content:'';position:absolute;top:60px;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(var(--accentrgb),0.08) 0%,transparent 60%);pointer-events:none}
+        .hero-logo{position:relative;max-width:600px;margin:0 auto 32px}
+        .hero-logo img{width:100%;height:auto}
+        .hero-tagline{position:relative;font-size:clamp(24px,3.5vw,38px);font-weight:700;line-height:1.2;margin-bottom:16px;background:linear-gradient(135deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .hero-desc{position:relative;font-size:16px;color:var(--ov0);max-width:560px;margin:0 auto 32px}
+        .hero-ctas{position:relative;display:flex;gap:12px;justify-content:center;margin-bottom:48px}
+        .btn-primary{background:linear-gradient(135deg,var(--accent1),var(--accentmid));color:var(--crust);padding:12px 28px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;text-decoration:none;transition:box-shadow .2s,transform .2s}
+        .btn-primary:hover{box-shadow:0 0 24px rgba(var(--accentrgb),0.35);transform:translateY(-2px)}
+        .btn-secondary{background:var(--sf0);color:var(--text);padding:12px 28px;border-radius:8px;border:1px solid var(--sf1);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}
+        .btn-secondary:hover{background:var(--sf1);border-color:var(--sf2)}
+        .terminal{position:relative;max-width:800px;margin:0 auto;background:var(--mantle);border:1px solid var(--sf0);border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 24px rgba(var(--accentrgb),0.06)}
+        .terminal-bar{background:var(--crust);padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--sf0)}
+        .terminal-dot{width:12px;height:12px;border-radius:50%}
+        .terminal-dot:nth-child(1){background:var(--red)}.terminal-dot:nth-child(2){background:var(--yellow)}.terminal-dot:nth-child(3){background:var(--green)}
+        .terminal-label{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ov0)}
+        .terminal-body{padding:24px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.9;text-align:left}
+        .terminal-body pre{margin:0;white-space:pre-wrap;word-wrap:break-word}
+        .t-g{color:var(--green)}.t-b{color:var(--accent1)}.t-m{color:var(--sub0)}.t-p{color:var(--peach)}
+        .stats{display:flex;justify-content:center;gap:40px;padding:60px 0;position:relative}
+        .stat{text-align:center}.stat-num{font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--accent1);line-height:1}.stat-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sf2);margin-top:6px;letter-spacing:2px;text-transform:uppercase}.stat-div{width:1px;height:48px;background:var(--sf0);align-self:center}
+        section{padding:80px 0}
+        .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--accent1);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+        .section-title{font-size:clamp(28px,4vw,40px);font-weight:700;margin-bottom:12px;letter-spacing:-.02em}
+        .section-desc{font-size:15px;color:var(--ov0);margin-bottom:48px;max-width:560px}
+        .gradient-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent1),var(--accent2),transparent);margin:0 auto;max-width:600px}
+        .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+        .bento-card{background:var(--mantle);border:1px solid var(--sf0);border-radius:12px;padding:28px;transition:all .25s;position:relative;overflow:hidden}
+        .bento-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent1),var(--accent2));opacity:0;transition:opacity .25s}
+        .bento-card:hover{transform:translateY(-3px);border-color:var(--sf1);box-shadow:0 12px 32px rgba(0,0,0,0.25),0 0 20px rgba(var(--accentrgb),0.06)}
+        .bento-card:hover::before{opacity:1}
+        .bento-hero{grid-column:span 2}
+        .bento-card h3{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent1);margin-bottom:8px}
+        .bento-card p{font-size:13.5px;color:var(--sub0);line-height:1.6}
+        .bento-card .mini-terminal{background:var(--crust);border-radius:8px;padding:14px;margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;text-align:left}
+        .bento-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+        .bento-stat .big{font-family:'JetBrains Mono',monospace;font-size:42px;font-weight:700;color:var(--accent1)}
+        .bento-stat .label{font-size:12px;color:var(--sf2);margin-top:4px;letter-spacing:1px}
+        .pills{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+        .pill{background:var(--mantle);border:1px solid var(--sf0);border-radius:20px;padding:9px 18px;font-family:'JetBrains Mono',monospace;font-size:12px;display:flex;align-items:center;gap:8px;transition:all .2s;color:var(--sub0)}
+        .pill:hover{border-color:var(--sf1);background:var(--base)}
+        .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}.dot-g{background:var(--green)}.dot-y{background:var(--yellow)}.dot-n{background:var(--sf2)}
+        .arch-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+        .arch-card{background:var(--mantle);border:1px solid var(--sf0);border-radius:12px;padding:28px;transition:border-color .2s}
+        .arch-card:hover{border-color:var(--sf1)}
+        .arch-num{display:inline-flex;width:30px;height:30px;background:linear-gradient(135deg,var(--accent1),var(--accentmid));color:var(--crust);border-radius:50%;align-items:center;justify-content:center;font-weight:700;font-size:14px;margin-bottom:14px}
+        .arch-card h3{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--teal);margin-bottom:8px}
+        .arch-card p{font-size:13.5px;color:var(--sub0);line-height:1.6}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+        .detect-card{background:var(--mantle);border-radius:12px;padding:28px}
+        .detect-card h3{font-size:14px;margin-bottom:14px}.detect-card ul{list-style:none;font-size:13px;color:var(--sub0);line-height:2.2}
+        .detect-hidden{border-left:3px solid var(--green)}.detect-hidden h3{color:var(--green)}
+        .detect-visible{border-left:3px solid var(--yellow)}.detect-visible h3{color:var(--yellow)}
+        footer{padding:48px 0;margin-top:40px}
+        .footer-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent1),var(--accent2),transparent);margin-bottom:48px}
+        .footer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px}
+        .footer-grid h4{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);margin-bottom:14px;letter-spacing:2px;text-transform:uppercase}
+        .footer-grid ul{list-style:none}.footer-grid li{margin-bottom:8px}
+        .footer-grid a{color:var(--ov2);text-decoration:none;font-size:13px;transition:color .2s}.footer-grid a:hover{color:var(--accent1)}
+        .footer-grid p{font-size:13px;color:var(--ov1);line-height:1.7}
+        .footer-bottom{text-align:center;margin-top:36px;padding-top:24px;border-top:1px solid var(--sf0);font-size:12px;color:var(--ov0)}
+        .animate{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}.animate.visible{opacity:1;transform:translateY(0)}
+        .animate-scale{opacity:0;transform:translateY(24px) scale(.97);transition:opacity .8s ease,transform .8s ease}.animate-scale.visible{opacity:1;transform:translateY(0) scale(1)}
+        @media(max-width:960px){.bento{grid-template-columns:1fr 1fr}.bento-hero{grid-column:span 2}.two-col,.arch-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:repeat(2,1fr)}.stats{flex-wrap:wrap;gap:24px}}
+        @media(max-width:600px){.container{padding:0 16px}.hero{padding:100px 0 48px}.bento{grid-template-columns:1fr}.bento-hero{grid-column:span 1}.stats{gap:16px}.stat-div{display:none}.nav-links a:not(.nav-cta){display:none}.footer-grid{grid-template-columns:1fr}.pills{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
+        a:focus-visible{outline:2px solid var(--accent1);outline-offset:2px}
     </style>
 </head>
 <body>
+    <nav class="nav"><div class="nav-inner">
+        <a href="#" class="nav-logo">Slipstream</a>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#architecture">Architecture</a>
+            <a href="https://github.com/Real-Fruit-Snacks/Slipstream">GitHub</a>
+            <a href="https://github.com/Real-Fruit-Snacks/Slipstream/releases/latest" class="nav-cta">Download</a>
+        </div>
+    </div></nav>
 
-    <!-- ════════════════════ HERO ════════════════════ -->
-    <section class="hero">
-        <div class="container">
-            <div class="hero-logo">
-                <img src="assets/logo-dark.svg" alt="Slipstream">
+    <section class="hero"><div class="container">
+        <div class="hero-logo animate"><img src="https://raw.githubusercontent.com/Real-Fruit-Snacks/Slipstream/main/docs/assets/logo-dark.svg" alt="Slipstream"></div>
+        <h1 class="hero-tagline animate" style="transition-delay:.1s">Your SSH, supercharged</h1>
+        <p class="hero-desc animate" style="transition-delay:.2s">Drop-in SSH wrapper with tunnel management, file transfers, passive filesystem mapping, and per-command session logging. All SSH functionality passes through unchanged.</p>
+        <div class="hero-ctas animate" style="transition-delay:.3s">
+            <a href="https://github.com/Real-Fruit-Snacks/Slipstream/releases/latest" class="btn-primary">Download Latest</a>
+            <a href="https://github.com/Real-Fruit-Snacks/Slipstream" class="btn-secondary">View Source</a>
+        </div>
+        <div class="terminal animate-scale" style="transition-delay:.4s">
+            <div class="terminal-bar"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">slipstream</span></div>
+            <div class="terminal-body"><pre><span class="t-g">$</span> slipstream ssh admin@10.10.10.5
+<span class="t-b">connected — fingerprint SHA256:xK9m2...</span>
+<span class="t-b">logging to ~/.config/slipstream/targets/SHA256-xK9m2/</span>
+
+<span class="t-g">admin@target:~$</span> !tunnel add --type socks -p 1080
+<span class="t-p">SOCKS proxy on 127.0.0.1:1080</span>
+
+<span class="t-g">admin@target:~$</span> !upload linpeas.sh /tmp/
+<span class="t-p">SFTP upload complete — 78KB</span>
+
+<span class="t-g">admin@target:~$</span> !map find suid
+<span class="t-m">/usr/bin/pkexec  /usr/bin/sudo  /usr/bin/passwd</span></pre></div>
+        </div>
+    </div></section>
+
+    <div class="container">
+        <div class="stats animate">
+            <div class="stat"><div class="stat-num" data-target="118">0</div><div class="stat-label">Tests</div></div>
+            <div class="stat-div"></div>
+            <div class="stat"><div class="stat-num" data-target="38">0</div><div class="stat-label">Source Files</div></div>
+            <div class="stat-div"></div>
+            <div class="stat"><div class="stat-num" data-target="6400" data-suffix="">0</div><div class="stat-label">Lines of Rust</div></div>
+            <div class="stat-div"></div>
+            <div class="stat"><div class="stat-num" data-target="2" data-suffix="MB">0</div><div class="stat-label">Binary</div></div>
+        </div>
+        <div class="gradient-line"></div>
+    </div>
+
+    <section id="features"><div class="container">
+        <div class="section-label animate">FEATURES</div>
+        <h2 class="section-title animate" style="transition-delay:.08s">SSH with ! commands</h2>
+        <p class="section-desc animate" style="transition-delay:.16s">Intercepts ! commands for tunnels, transfers, mapping, and logging. Everything else passes through to SSH unchanged.</p>
+        <div class="bento">
+            <div class="bento-card bento-hero animate" style="transition-delay:.1s">
+                <h3>Tunnel Management</h3>
+                <p>iptables-style syntax for SSH tunnels. SOCKS proxy, local forward, reverse forward. Save and restore per target. Real forwarding via ssh -O forward.</p>
+                <div class="mini-terminal"><span class="t-g">$</span> !tunnel add --type socks -p 1080<br><span class="t-g">$</span> !tunnel add --type local -s 8080 -d 10.10.10.50 -p 80<br><span class="t-g">$</span> !tunnel list<br><span class="t-g">$</span> !tunnel save</div>
             </div>
-            <p class="hero-sub">
-                Drop-in SSH replacement with tunnel management, file transfers, passive filesystem mapping, and per-command session logging. All flags pass through. Linux + Windows targets.
-            </p>
-            <div class="hero-warning">
-                Authorization Required &mdash; For authorized security testing with explicit written permission only.
+            <div class="bento-card bento-stat animate" style="transition-delay:.18s">
+                <div class="big">4</div>
+                <div class="label">Transfer Methods</div>
             </div>
-            <div class="hero-stats">
-                <div class="stat">
-                    <div class="stat-val">118</div>
-                    <div class="stat-label">Tests</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-val">38</div>
-                    <div class="stat-label">Source Files</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-val">6.4K</div>
-                    <div class="stat-label">Lines of Rust</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-val">2.4 MB</div>
-                    <div class="stat-label">Binary Size</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-val">2</div>
-                    <div class="stat-label">Platforms</div>
-                </div>
+            <div class="bento-card animate" style="transition-delay:.2s">
+                <h3 style="color:var(--mauve)">File Transfer</h3>
+                <p>Automatic fallback chain: SFTP → SCP → cat-over-SSH → base64. Windows paths converted transparently. No separate SCP session needed.</p>
             </div>
-            <div class="hero-ctas">
-                <a href="https://github.com/Real-Fruit-Snacks/Slipstream" class="btn btn-primary">View on GitHub</a>
-                <a href="#commands" class="btn btn-ghost">Documentation</a>
+            <div class="bento-card animate" style="transition-delay:.28s">
+                <h3 style="color:var(--green)">Filesystem Mapper</h3>
+                <p>Passive output parsing. Run ls, dir, find — the mapper builds a searchable map without sending extra commands. Pattern search, SUID finder, JSON export.</p>
+            </div>
+            <div class="bento-card animate" style="transition-delay:.36s">
+                <h3 style="color:var(--peach)">Session Logging</h3>
+                <p>Every command gets its own timestamped log file. Session index tracks what you ran and when. Built for OSCP exam proof and engagement reporting.</p>
+            </div>
+            <div class="bento-card bento-stat animate" style="transition-delay:.1s">
+                <div class="big" style="color:var(--teal)">2</div>
+                <div class="label">Platforms</div>
+            </div>
+            <div class="bento-card bento-hero animate" style="transition-delay:.18s">
+                <h3 style="color:var(--red)">Target Identity</h3>
+                <p>Targets identified by SSH host key fingerprint, not IP. Reconnect after DHCP changes. Access dual-homed hosts. Reuse lab IPs. Conflict detection with Archive/Keep/Ignore prompts.</p>
+                <div class="mini-terminal"><span class="t-g">$</span> slipstream ssh admin@10.10.10.5<br><span class="t-b">fingerprint SHA256:xK9m2... → known target "DC01"</span><br><span class="t-b">restoring 3 saved tunnels...</span></div>
+            </div>
+            <div class="bento-card animate" style="transition-delay:.26s">
+                <h3 style="color:var(--yellow)">OS Detection</h3>
+                <p>Auto-detects Linux vs Windows from SSH output. Adapts mapper parsers, CWD tracking, transfer paths, and loot targets per platform.</p>
             </div>
         </div>
-    </section>
+    </div></section>
 
-    <!-- ════════════════════ MODES (! COMMANDS) ════════════════════ -->
-    <section id="commands">
-        <div class="container">
-            <span class="section-tag">// commands</span>
-            <h2>Intercepted ! Commands</h2>
-            <p class="section-desc">Type <code>!</code> inside any SSH session. Slipstream intercepts known commands and passes unknown sequences through to bash history expansion.</p>
+    <section style="background:var(--mantle)"><div class="container">
+        <div class="section-label animate">CAPABILITIES</div>
+        <h2 class="section-title animate" style="transition-delay:.08s">What it intercepts</h2>
+        <p class="section-desc animate" style="transition-delay:.16s">Only known ! commands are intercepted. Unknown sequences (!! !$ !-1) pass through to SSH for bash history expansion.</p>
+        <div class="pills">
+            <div class="pill animate"><span class="dot dot-g"></span>SOCKS Tunnel</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Local Forward</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Reverse Forward</div>
+            <div class="pill animate"><span class="dot dot-g"></span>SFTP Upload</div>
+            <div class="pill animate"><span class="dot dot-g"></span>SCP Fallback</div>
+            <div class="pill animate"><span class="dot dot-g"></span>cat/base64 Fallback</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Filesystem Map</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Pattern Search</div>
+            <div class="pill animate"><span class="dot dot-g"></span>SUID Finder</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Per-Command Logs</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Session Index</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Target Notes</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Auto-Loot</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Exec via Socket</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Fingerprint ID</div>
+            <div class="pill animate"><span class="dot dot-g"></span>OS Detection</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Linux Targets</div>
+            <div class="pill animate"><span class="dot dot-g"></span>Windows Targets</div>
+        </div>
+    </div></section>
 
-            <div class="modes-grid">
-                <div class="mode-card">
-                    <div class="mode-cmd"><span class="bang">!</span><span class="cmd">tunnel</span></div>
-                    <p>iptables-style syntax. SOCKS, local, and reverse forwards via <code>ssh -O forward</code>. Add, delete, list, flush, save, and restore per target.</p>
-                </div>
-                <div class="mode-card">
-                    <div class="mode-cmd"><span class="bang">!</span><span class="cmd">upload / download</span></div>
-                    <p>File transfer with SFTP &rarr; SCP &rarr; cat &rarr; base64 fallback chain. Windows backslash paths handled automatically.</p>
-                </div>
-                <div class="mode-card">
-                    <div class="mode-cmd"><span class="bang">!</span><span class="cmd">map</span></div>
-                    <p>Passive filesystem mapper. Parses ls, dir, find, net user, ipconfig output. Search by pattern, show coverage, export as JSON.</p>
-                </div>
-                <div class="mode-card">
-                    <div class="mode-cmd"><span class="bang">!</span><span class="cmd">loot</span></div>
-                    <p>Auto-grab common recon files. Linux: passwd, shadow, crontab, SUID. Windows: SAM, systeminfo, tasklist, net user.</p>
-                </div>
-                <div class="mode-card">
-                    <div class="mode-cmd"><span class="bang">!</span><span class="cmd">sessions</span></div>
-                    <p>List, switch, connect, rename, kill, and background sessions. Each session tracks tunnels, logs, and target identity.</p>
-                </div>
-                <div class="mode-card">
-                    <div class="mode-cmd"><span class="bang">!</span><span class="cmd">exec / note</span></div>
-                    <p>Run commands via control socket without polluting interactive session. Add timestamped notes to target annotations.</p>
-                </div>
+    <section id="architecture"><div class="container">
+        <div class="section-label animate">ARCHITECTURE</div>
+        <h2 class="section-title animate" style="transition-delay:.08s">PTY-based interception</h2>
+        <p class="section-desc animate" style="transition-delay:.16s">Wraps the real ssh binary. ControlMaster socket for multiplexing. Prompt-aware input routing.</p>
+        <div class="arch-grid">
+            <div class="arch-card animate" style="transition-delay:.1s"><div class="arch-num">1</div><h3>PTY Layer</h3><p>Spawns real <code>ssh</code> binary under a PTY. All SSH features pass through unchanged. SIGWINCH/SIGHUP/SIGTERM forwarded.</p></div>
+            <div class="arch-card animate" style="transition-delay:.2s"><div class="arch-num">2</div><h3>Input Router</h3><p>Prompt-aware interception. Cooked mode buffers and checks for <code>!</code> commands. Raw mode (vim, top) passes everything through.</p></div>
+            <div class="arch-card animate" style="transition-delay:.3s"><div class="arch-num">3</div><h3>Master Socket</h3><p><code>ControlMaster=auto</code> with Slipstream-owned socket. Tunnels via <code>ssh -O forward</code>. Transfers over the same connection.</p></div>
+            <div class="arch-card animate" style="transition-delay:.4s"><div class="arch-num">4</div><h3>Storage Layer</h3><p>Per-target data keyed by fingerprint: <code>target.toml</code>, <code>notes.txt</code>, <code>map.json</code>, timestamped log directories.</p></div>
+        </div>
+    </div></section>
+
+    <section style="background:var(--mantle)"><div class="container">
+        <div class="section-label animate">GETTING STARTED</div>
+        <h2 class="section-title animate" style="transition-delay:.08s">Build and connect</h2>
+        <div class="two-col">
+            <div class="terminal animate" style="transition-delay:.1s">
+                <div class="terminal-bar"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">build.sh</span></div>
+                <div class="terminal-body"><pre><span class="t-g">$</span> git clone https://github.com/Real-Fruit-Snacks/Slipstream.git
+<span class="t-g">$</span> cd Slipstream && cargo build --release
+
+<span class="t-g">$</span> ./target/release/slipstream ssh user@10.10.10.5
+<span class="t-b">connected — all SSH flags work normally</span></pre></div>
+            </div>
+            <div class="terminal animate" style="transition-delay:.25s">
+                <div class="terminal-bar"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">session.sh</span></div>
+                <div class="terminal-body"><pre><span class="t-m"># Inside the session</span>
+<span class="t-g">$</span> !tunnel add --type socks -p 1080
+<span class="t-g">$</span> !upload linpeas.sh /tmp/
+<span class="t-g">$</span> !map find suid
+<span class="t-g">$</span> !loot
+<span class="t-g">$</span> !note This is the domain controller</pre></div>
             </div>
         </div>
-    </section>
+    </div></section>
 
-    <!-- ════════════════════ FEATURES ════════════════════ -->
-    <section id="features" style="background: var(--mantle);">
-        <div class="container">
-            <span class="section-tag">// features</span>
-            <h2>Built for Engagements</h2>
-            <p class="section-desc">Everything you need during a pentest without changing how you use SSH. Slipstream stays invisible while building a full picture of the target.</p>
-
-            <div class="features-grid">
-                <div class="feature-card">
-                    <span class="feature-icon">&#128268;</span>
-                    <h3>Tunnel Management</h3>
-                    <p>Real SSH forwarding via control socket. SOCKS5 proxy, local and reverse port forwards. Save and restore tunnel configurations per target.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">&#128228;</span>
-                    <h3>File Transfers</h3>
-                    <p>Upload and download with SFTP &rarr; SCP &rarr; cat &rarr; base64 fallback chain. Windows paths converted automatically. Works on locked-down targets.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">&#128506;</span>
-                    <h3>Filesystem Mapper</h3>
-                    <p>Passive output parsing builds a searchable map. No extra commands sent. Search by pattern, track coverage, export to JSON.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">&#128221;</span>
-                    <h3>Session Logging</h3>
-                    <p>Per-command log files with timestamps. Session index for OSCP proof and engagement reporting. Every command captured automatically.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">&#128273;</span>
-                    <h3>Target Identity</h3>
-                    <p>SSH host key fingerprint as primary key. Survives DHCP changes, dual-homed hosts, and lab IP reuse. Conflict detection with Archive/Keep/Ignore.</p>
-                </div>
-                <div class="feature-card">
-                    <span class="feature-icon">&#127919;</span>
-                    <h3>OS Detection</h3>
-                    <p>Auto-detects Linux vs Windows from SSH output. Adapts parser selection, CWD tracking, path handling, and loot targets automatically.</p>
-                </div>
-            </div>
+    <footer><div class="container">
+        <div class="footer-line"></div>
+        <div class="footer-grid">
+            <div><h4>Documentation</h4><ul><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#quick-start">Quick Start</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#features">Features</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#architecture">Architecture</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#security">Security</a></li></ul></div>
+            <div><h4>Resources</h4><ul><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/releases/latest">Latest Release</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/issues">Report Issue</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/blob/main/CHANGELOG.md">Changelog</a></li></ul></div>
+            <div><h4>Toolkit</h4><ul><li><a href="https://github.com/Real-Fruit-Snacks/Flux">Flux</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Conduit">Conduit</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Aquifer">Aquifer</a></li><li><a href="https://github.com/Real-Fruit-Snacks">View All →</a></li></ul></div>
+            <div><h4>License</h4><p>MIT License<br>Copyright © 2026<br>Real-Fruit-Snacks</p></div>
         </div>
-    </section>
+        <div class="footer-bottom">Part of the Real-Fruit-Snacks security toolkit</div>
+    </div></footer>
 
-    <!-- ════════════════════ CAPABILITIES ════════════════════ -->
-    <section>
-        <div class="container">
-            <span class="section-tag">// capabilities</span>
-            <h2>Platform Capabilities</h2>
-            <p class="section-desc">Full-featured against both Linux and Windows SSH targets. Runs on any system with OpenSSH 6.8+ client.</p>
-
-            <div class="capabilities">
-                <div class="capability"><span class="cap-dot full"></span>PTY Wrapper</div>
-                <div class="capability"><span class="cap-dot full"></span>SSH Passthrough</div>
-                <div class="capability"><span class="cap-dot full"></span>Master Socket</div>
-                <div class="capability"><span class="cap-dot full"></span>SOCKS Proxy</div>
-                <div class="capability"><span class="cap-dot full"></span>Local Forward</div>
-                <div class="capability"><span class="cap-dot full"></span>Reverse Forward</div>
-                <div class="capability"><span class="cap-dot full"></span>SFTP Transfer</div>
-                <div class="capability"><span class="cap-dot full"></span>SCP Fallback</div>
-                <div class="capability"><span class="cap-dot full"></span>cat/base64 Fallback</div>
-                <div class="capability"><span class="cap-dot full"></span>Passive Mapper</div>
-                <div class="capability"><span class="cap-dot full"></span>Per-Command Logs</div>
-                <div class="capability"><span class="cap-dot full"></span>Session Index</div>
-                <div class="capability"><span class="cap-dot full"></span>Fingerprint Identity</div>
-                <div class="capability"><span class="cap-dot full"></span>Auto-Loot</div>
-                <div class="capability"><span class="cap-dot full"></span>OS Detection</div>
-                <div class="capability"><span class="cap-dot full"></span>Boundary Detection</div>
-                <div class="capability"><span class="cap-dot full"></span>CWD Tracking</div>
-                <div class="capability"><span class="cap-dot full"></span>Target Notes</div>
-                <div class="capability"><span class="cap-dot full"></span>Exec via Socket</div>
-                <div class="capability"><span class="cap-dot full"></span>Conflict Detection</div>
-            </div>
-
-            <div style="margin-top: 20px; font-size: 12px; color: var(--overlay0); font-family: 'JetBrains Mono', monospace;">
-                <span style="color: var(--green);">&#9679;</span> Full &nbsp;&nbsp;
-                <span style="color: var(--yellow);">&#9679;</span> Partial &nbsp;&nbsp;
-                <span style="color: var(--surface2);">&#9679;</span> Not Supported
-            </div>
-        </div>
-    </section>
-
-    <!-- ════════════════════ ARCHITECTURE ════════════════════ -->
-    <section style="background: var(--mantle);">
-        <div class="container">
-            <span class="section-tag">// architecture</span>
-            <h2>Architecture</h2>
-            <p class="section-desc">Four-layer design. PTY wraps the real ssh binary. Input interceptor routes ! commands. Output feeds mapper and logger.</p>
-
-            <div class="arch-grid">
-                <div class="arch-card">
-                    <div class="arch-num">1</div>
-                    <h3>PTY Layer</h3>
-                    <p>Spawns the real <code>ssh</code> binary with <code>ControlMaster=auto</code>. All SSH flags, options, and config pass through unchanged. SIGWINCH/SIGHUP/SIGTERM handling.</p>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-num">2</div>
-                    <h3>SSH Control</h3>
-                    <p>Master socket multiplexing. Tunnel operations via <code>ssh -O forward</code> and <code>ssh -O cancel</code>. Fingerprint capture from <code>ssh -v</code> handshake. Orphan socket detection.</p>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-num">3</div>
-                    <h3>Command Router</h3>
-                    <p>Prompt-aware input interception in cooked/raw mode. Known <code>!</code> commands dispatched to handlers. Unknown sequences pass through to bash history expansion.</p>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-num">4</div>
-                    <h3>Storage Layer</h3>
-                    <p>Per-target data keyed by fingerprint. Per-command log files with session index. Filesystem map with merge-on-add. Target annotations and tunnel configs.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ════════════════════ GETTING STARTED ════════════════════ -->
-    <section>
-        <div class="container">
-            <span class="section-tag">// getting started</span>
-            <h2>Build and Connect</h2>
-            <p class="section-desc">Cargo build. Drop in your PATH. Connect exactly as you would with ssh.</p>
-
-            <div class="two-col">
-                <div class="terminal">
-                    <div class="terminal-bar">
-                        <span class="terminal-dot"></span>
-                        <span class="terminal-dot"></span>
-                        <span class="terminal-dot"></span>
-                        <span class="terminal-label">build.sh</span>
-                    </div>
-                    <div class="terminal-body">
-                        <pre><span class="c"># Clone and build</span>
-<span class="p">$</span> git clone https://github.com/Real-Fruit-Snacks/Slipstream.git
-<span class="p">$</span> cd Slipstream
-
-<span class="c"># Build release binary (~2.4 MB)</span>
-<span class="p">$</span> cargo build --release
-
-<span class="c"># Run tests</span>
-<span class="p">$</span> cargo test
-<span class="v">test result: ok. 118 passed; 0 failed</span><span class="cursor"></span></pre>
-                    </div>
-                </div>
-
-                <div class="terminal">
-                    <div class="terminal-bar">
-                        <span class="terminal-dot"></span>
-                        <span class="terminal-dot"></span>
-                        <span class="terminal-dot"></span>
-                        <span class="terminal-label">usage.sh</span>
-                    </div>
-                    <div class="terminal-body">
-                        <pre><span class="c"># Connect — all SSH flags work</span>
-<span class="p">$</span> slipstream ssh user@10.10.10.5
-
-<span class="c"># SOCKS proxy on port 1080</span>
-<span class="p">slipstream&gt;</span> <span class="b">!</span>tunnel add --type socks -p 1080
-
-<span class="c"># Upload a file</span>
-<span class="p">slipstream&gt;</span> <span class="b">!</span>upload linpeas.sh /tmp/
-
-<span class="c"># Grab common loot</span>
-<span class="p">slipstream&gt;</span> <span class="b">!</span>loot
-
-<span class="c"># Search the passive map</span>
-<span class="p">slipstream&gt;</span> <span class="b">!</span>map find *.conf
-
-<span class="c"># Annotate the target</span>
-<span class="p">slipstream&gt;</span> <span class="b">!</span>note This is the DC</pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ════════════════════ DETECTION AWARENESS ════════════════════ -->
-    <section style="background: var(--mantle);">
-        <div class="container">
-            <span class="section-tag">// detection awareness</span>
-            <h2>Detection Awareness</h2>
-            <p class="section-desc">Know what Slipstream hides from and what it doesn't. Honest tooling for professional operators.</p>
-
-            <div class="detect-grid">
-                <div class="detect-card detect-hidden">
-                    <h3>Hidden From</h3>
-                    <ul>
-                        <li>Target process list &mdash; no extra processes spawned on target</li>
-                        <li>Casual SSH session review &mdash; <code>!</code> commands are local-only</li>
-                        <li>Network metadata &mdash; all traffic is normal SSH over existing connection</li>
-                        <li>Target filesystem &mdash; mapper is passive, reads output only</li>
-                        <li>Command history on target &mdash; <code>!exec</code> uses control socket</li>
-                    </ul>
-                </div>
-                <div class="detect-card detect-visible">
-                    <h3>Visible To</h3>
-                    <ul>
-                        <li>SSH server logs &mdash; all commands still logged server-side</li>
-                        <li>Network monitoring &mdash; SSH connection metadata visible</li>
-                        <li>File transfers &mdash; SFTP/SCP show in SSH audit logs</li>
-                        <li>Tunnel traffic &mdash; forwarded connections are standard SSH tunnels</li>
-                        <li>Operator filesystem &mdash; full session logs stored locally</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ════════════════════ FOOTER ════════════════════ -->
-    <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div>
-                    <h4>Documentation</h4>
-                    <ul>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#quick-start">Quick Start</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#commands">Commands</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#architecture">Architecture</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream#internals">Internals</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4>Resources</h4>
-                    <ul>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/issues">Report Issue</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/blob/main/CONTRIBUTING.md">Contributing</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/blob/main/CHANGELOG.md">Changelog</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Slipstream/blob/main/SECURITY.md">Security</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4>Toolkit</h4>
-                    <ul>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Flux">Flux</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Conduit">Conduit</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Riptide">Riptide</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Cascade">Cascade</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Aquifer">Aquifer</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Tidepool">Tidepool</a></li>
-                        <li><a href="https://github.com/Real-Fruit-Snacks/Rapids">Rapids</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4>License</h4>
-                    <p>MIT License<br>Copyright &copy; 2026 Real-Fruit-Snacks<br><br>Built with Rust</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                Part of the Real-Fruit-Snacks security toolkit &nbsp;&middot;&nbsp; With great power comes great responsibility.
-            </div>
-        </div>
-    </footer>
-
+    <script>
+    const obs=new IntersectionObserver(e=>{e.forEach(el=>{if(el.isIntersecting){el.target.classList.add('visible');obs.unobserve(el.target)}})},{threshold:.1,rootMargin:'0px 0px -50px 0px'});
+    document.querySelectorAll('.animate,.animate-scale').forEach(el=>obs.observe(el));
+    function countUp(el){const t=parseInt(el.dataset.target),s=el.dataset.suffix||'',p=el.dataset.prefix||'',d=1500,st=performance.now();function u(n){const pr=Math.min((n-st)/d,1),e=1-Math.pow(1-pr,3);el.textContent=p+Math.floor(t*e)+s;if(pr<1)requestAnimationFrame(u)}requestAnimationFrame(u)}
+    const sobs=new IntersectionObserver(e=>{e.forEach(el=>{if(el.isIntersecting){countUp(el.target);sobs.unobserve(el.target)}})},{threshold:.5});
+    document.querySelectorAll('.stat-num').forEach(el=>sobs.observe(el));
+    window.addEventListener('scroll',()=>{document.querySelector('.nav').style.borderBottomColor=window.scrollY>20?'rgba(49,50,68,0.8)':'rgba(49,50,68,0.3)'});
+    </script>
 </body>
 </html>
