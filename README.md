@@ -1,24 +1,24 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="Slipstream" width="800">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Real-Fruit-Snacks/Slipstream/main/docs/assets/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Real-Fruit-Snacks/Slipstream/main/docs/assets/logo-light.svg">
+  <img alt="Slipstream" src="https://raw.githubusercontent.com/Real-Fruit-Snacks/Slipstream/main/docs/assets/logo-dark.svg" width="520">
+</picture>
 
-<br>
+![Rust](https://img.shields.io/badge/language-Rust-orange.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20targets-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-Slipstream is an SSH wrapper for red team operations, written in Rust. It wraps the system's real `ssh` binary via PTY, intercepting `!` commands to provide session management, tunnel management, file transfers, passive filesystem mapping, and per-command session logging — while passing all SSH functionality through unchanged. Works against both Linux and Windows targets.
+**SSH wrapper for red team operations — drop-in replacement with tunnel management, file transfers, passive filesystem mapping, and per-command session logging**
+
+Wraps the system's real `ssh` binary via PTY, intercepting `!` commands to provide session management, tunnel management, file transfers, passive filesystem mapping, and per-command session logging — while passing all SSH functionality through unchanged. Targets identified by SSH host key fingerprint. Works against both Linux and Windows targets.
+
+> **Authorization Required**: This tool is designed exclusively for authorized security testing with explicit written permission. Unauthorized access to computer systems is illegal and may result in criminal prosecution.
+
+[Quick Start](#quick-start) • [Commands](#commands) • [Architecture](#architecture) • [Internals](#internals) • [Configuration](#configuration) • [Security](#security)
 
 </div>
-
-<br>
-
-## Table of Contents
-
-- [Highlights](#highlights)
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [Commands](#commands)
-- [Internals](#internals)
-- [Project Structure](#project-structure)
-- [Future Work](#future-work)
 
 ---
 
@@ -28,41 +28,25 @@ Slipstream is an SSH wrapper for red team operations, written in Rust. It wraps 
 <tr>
 <td width="50%">
 
-### Drop-In SSH Replacement
+**Drop-In SSH Replacement**
 All SSH flags, `-o` options, and `~/.ssh/config` work as normal. Slipstream parses what it needs (host, user, port) and passes everything else unchanged to the real `ssh` binary. Your workflow doesn't change.
 
-</td>
-<td width="50%">
-
-### Tunnel Management
+**Tunnel Management**
 iptables-style syntax for SSH tunnels: `!tunnel add --type socks -p 1080`. Real forwarding via `ssh -O forward` over the master socket. Add, delete, list, flush, save, and restore tunnel configurations per target.
 
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### File Transfers
+**File Transfers**
 `!upload` and `!download` with an automatic fallback chain: SFTP, SCP, cat-over-SSH, base64. Windows paths with backslashes are handled transparently via forward-slash conversion. No separate SCP session needed.
 
 </td>
 <td width="50%">
 
-### Passive Filesystem Mapper
+**Passive Filesystem Mapper**
 Slipstream watches your commands and parses the output. Run `ls`, `dir`, `find`, `net user`, `ipconfig` — the mapper builds a searchable map of the remote filesystem without sending extra commands.
 
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### Per-Command Session Logging
+**Per-Command Session Logging**
 Every command gets its own timestamped log file. A session index tracks what you ran and when. Built for OSCP exam proof and engagement reporting — no more lost terminal history.
 
-</td>
-<td width="50%">
-
-### Target Identity by Fingerprint
+**Target Identity by Fingerprint**
 Targets are identified by SSH host key fingerprint, not IP. Reconnect after DHCP changes, access dual-homed hosts, or reuse lab IPs — Slipstream knows it's the same (or different) machine.
 
 </td>
@@ -75,16 +59,33 @@ Targets are identified by SSH host key fingerprint, not IP. Reconnect after DHCP
 
 ### Prerequisites
 
-| Requirement | Version |
-|-------------|---------|
-| Rust | 1.70+ |
-| OpenSSH | 6.8+ (client) |
-| Target | Any SSH server (Linux or Windows) |
+<table>
+<tr>
+<th>Requirement</th>
+<th>Version</th>
+<th>Purpose</th>
+</tr>
+<tr>
+<td>Rust</td>
+<td>1.70+</td>
+<td>Compiler toolchain</td>
+</tr>
+<tr>
+<td>OpenSSH</td>
+<td>6.8+</td>
+<td>SSH client with ControlMaster support</td>
+</tr>
+<tr>
+<td>Target</td>
+<td>Any</td>
+<td>Any SSH server (Linux or Windows)</td>
+</tr>
+</table>
 
 ### Build
 
 ```bash
-# Clone
+# Clone repository
 git clone https://github.com/Real-Fruit-Snacks/Slipstream.git
 cd Slipstream
 
@@ -119,44 +120,6 @@ slipstream clean --target SHA256:abc123
 ```
 
 > Bash history expansion (`!!`, `!$`, `!-1`) passes through to SSH — only known Slipstream commands are intercepted.
-
----
-
-## Architecture
-
-```
-+---------------------------------------------------------+
-|                     slipstream                          |
-|                                                         |
-|  +------------+    +-------------------------------+    |
-|  | PTY Layer  |<-->| Input Interceptor             |    |
-|  |            |    | (prompt-aware, cooked/raw)     |    |
-|  +-----+------+    +-------------+-----------------+    |
-|        |                         |                      |
-|  +-----v------+    +------------v-----------------+     |
-|  | SSH Child   |    | Command Router               |    |
-|  | Process     |    |                              |    |
-|  | (real ssh)  |    | !tunnel  !upload  !exec      |    |
-|  +-----+------+    | !map     !loot    !note       |    |
-|        |           | !sessions !connect !help ...   |    |
-|  +-----v------+    +------------------------------+     |
-|  | Master      |                                        |
-|  | Socket      |    +-------------+  +-----------+      |
-|  | (Control)   |    | Log Engine  |  | FS Mapper |      |
-|  +-------------+    +-------------+  +-----------+      |
-+---------------------------------------------------------+
-```
-
-| Layer | Implementation |
-|-------|----------------|
-| **Transport** | Wraps real `ssh` binary via PTY — all SSH features pass through |
-| **Multiplexing** | `ControlMaster=auto` with Slipstream-owned socket path |
-| **Tunnels** | `ssh -O forward` / `ssh -O cancel` via master socket |
-| **Transfers** | SFTP / SCP / cat / base64 fallback chain over master socket |
-| **Logging** | Per-command files + session index with timestamps |
-| **Mapping** | Passive output parsing — `ls`, `dir`, `find`, `net user`, `ipconfig` |
-| **Identity** | SSH host key fingerprint as primary key, conflict detection |
-| **OS Detection** | Auto-detects Linux vs Windows from SSH output |
 
 ---
 
@@ -228,6 +191,44 @@ slipstream clean --target SHA256:abc123
 
 ---
 
+## Architecture
+
+```
++---------------------------------------------------------+
+|                     slipstream                          |
+|                                                         |
+|  +------------+    +-------------------------------+    |
+|  | PTY Layer  |<-->| Input Interceptor             |    |
+|  |            |    | (prompt-aware, cooked/raw)     |    |
+|  +-----+------+    +-------------+-----------------+    |
+|        |                         |                      |
+|  +-----v------+    +------------v-----------------+     |
+|  | SSH Child   |    | Command Router               |    |
+|  | Process     |    |                              |    |
+|  | (real ssh)  |    | !tunnel  !upload  !exec      |    |
+|  +-----+------+    | !map     !loot    !note       |    |
+|        |           | !sessions !connect !help ...   |    |
+|  +-----v------+    +------------------------------+     |
+|  | Master      |                                        |
+|  | Socket      |    +-------------+  +-----------+      |
+|  | (Control)   |    | Log Engine  |  | FS Mapper |      |
+|  +-------------+    +-------------+  +-----------+      |
++---------------------------------------------------------+
+```
+
+| Layer | Implementation |
+|-------|----------------|
+| **Transport** | Wraps real `ssh` binary via PTY — all SSH features pass through |
+| **Multiplexing** | `ControlMaster=auto` with Slipstream-owned socket path |
+| **Tunnels** | `ssh -O forward` / `ssh -O cancel` via master socket |
+| **Transfers** | SFTP / SCP / cat / base64 fallback chain over master socket |
+| **Logging** | Per-command files + session index with timestamps |
+| **Mapping** | Passive output parsing — `ls`, `dir`, `find`, `net user`, `ipconfig` |
+| **Identity** | SSH host key fingerprint as primary key, conflict detection |
+| **OS Detection** | Auto-detects Linux vs Windows from SSH output |
+
+---
+
 ## Internals
 
 ### Input Interception
@@ -242,14 +243,43 @@ Targets are identified by SSH host key fingerprint, captured from `ssh -v` outpu
 
 Slipstream auto-detects the target OS from SSH output (presence of "Windows", "Microsoft", `C:\`, etc.) and adapts:
 
-| Feature | Linux | Windows |
-|---------|-------|---------|
-| Mapper parsers | `ls`, `find`, `tree`, `/etc/passwd` | `dir`, `net user`, `ipconfig` |
-| CWD tracking | `/` separator | `\` separator |
-| Transfer paths | Forward slashes | Auto-converted forward slashes |
-| Boundary detection | `PROMPT_COMMAND` | PowerShell `prompt` function |
-| User hint | "Run: cat /etc/passwd" | "Run: net user" |
-| Loot targets | shadow, crontab, suid | SAM, systeminfo, tasklist |
+<table>
+<tr>
+<th>Feature</th>
+<th>Linux</th>
+<th>Windows</th>
+</tr>
+<tr>
+<td>Mapper parsers</td>
+<td><code>ls</code>, <code>find</code>, <code>tree</code>, <code>/etc/passwd</code></td>
+<td><code>dir</code>, <code>net user</code>, <code>ipconfig</code></td>
+</tr>
+<tr>
+<td>CWD tracking</td>
+<td><code>/</code> separator</td>
+<td><code>\</code> separator</td>
+</tr>
+<tr>
+<td>Transfer paths</td>
+<td>Forward slashes</td>
+<td>Auto-converted forward slashes</td>
+</tr>
+<tr>
+<td>Boundary detection</td>
+<td><code>PROMPT_COMMAND</code></td>
+<td>PowerShell <code>prompt</code> function</td>
+</tr>
+<tr>
+<td>User hint</td>
+<td>"Run: cat /etc/passwd"</td>
+<td>"Run: net user"</td>
+</tr>
+<tr>
+<td>Loot targets</td>
+<td>shadow, crontab, suid</td>
+<td>SAM, systeminfo, tasklist</td>
+</tr>
+</table>
 
 ### Data Organization
 
@@ -318,33 +348,168 @@ slipstream/
 +-- tests/                    # 118 integration tests
 +-- docs/
     +-- banner.svg
-    +-- superpowers/specs/    # Design specification
-    +-- superpowers/plans/    # Implementation plan
+    +-- assets/
+        +-- logo-dark.svg
+        +-- logo-light.svg
+    +-- index.html
 ```
 
 ~6,400 lines of Rust. 38 source files. 118 tests. 2.4 MB binary.
 
 ---
 
-## Future Work
+## Platform Support
 
-- True multi-session PTY multiplexing (currently tmux-based)
-- Tab completion for `!` commands
-- `!portscan` via bash `/dev/tcp` probes
-- Auto-proxychains config after SOCKS tunnel creation
-- PowerShell `Get-ChildItem` parser for mapper
-- Session auto-reconnect with exponential backoff
+<table>
+<tr>
+<th>Capability</th>
+<th>Linux Targets</th>
+<th>Windows Targets</th>
+</tr>
+<tr>
+<td>SSH Connection</td>
+<td>Full</td>
+<td>Full (OpenSSH for Windows)</td>
+</tr>
+<tr>
+<td>Tunnel Management</td>
+<td>Full (SOCKS, local, reverse)</td>
+<td>Full (SOCKS, local, reverse)</td>
+</tr>
+<tr>
+<td>File Transfer</td>
+<td>SFTP / SCP / cat / base64</td>
+<td>SFTP / SCP / cat / base64</td>
+</tr>
+<tr>
+<td>Mapper Parsers</td>
+<td><code>ls</code>, <code>find</code>, <code>tree</code>, <code>/etc/passwd</code></td>
+<td><code>dir</code>, <code>net user</code>, <code>ipconfig</code></td>
+</tr>
+<tr>
+<td>CWD Tracking</td>
+<td><code>PROMPT_COMMAND</code> injection</td>
+<td>PowerShell <code>prompt</code> function</td>
+</tr>
+<tr>
+<td>Path Handling</td>
+<td>Forward slashes (native)</td>
+<td>Auto backslash-to-slash conversion</td>
+</tr>
+<tr>
+<td>Loot Targets</td>
+<td>passwd, shadow, crontab, SUID</td>
+<td>SAM, systeminfo, tasklist, net user</td>
+</tr>
+<tr>
+<td>OS Detection</td>
+<td>Automatic</td>
+<td>Automatic</td>
+</tr>
+<tr>
+<td>Session Logging</td>
+<td>Full</td>
+<td>Full</td>
+</tr>
+</table>
+
+---
+
+## Configuration
+
+### Config File
+
+Optional persistent configuration at `~/.config/slipstream/config.toml`:
+
+```toml
+[defaults]
+transfer_method = "sftp"    # sftp, scp, cat, base64
+auto_loot = false           # Run !loot on connect
+auto_map = true             # Enable passive mapper
+```
+
+CLI flags always override config values.
+
+### Data Directories
+
+```
+~/.config/slipstream/
++-- config.toml                 # Global config
++-- targets/
+|   +-- SHA256-fingerprint/     # Per-target data keyed by host key
++-- sessions/
+    +-- *.sock                  # Runtime master sockets
+```
+
+---
+
+## Security
+
+### Vulnerability Reporting
+
+**Report security issues via:**
+- GitHub Security Advisories (preferred)
+- Private disclosure to maintainers
+- Responsible disclosure timeline (90 days)
+
+**Do NOT:**
+- Open public GitHub issues for vulnerabilities
+- Disclose before coordination with maintainers
+- Exploit vulnerabilities in unauthorized contexts
+
+### Threat Model
+
+**In scope:**
+- Operator-side session management and logging
+- Tunneling over existing SSH connections
+- Passive reconnaissance from command output
+
+**Out of scope:**
+- Hiding SSH connections from network monitoring
+- Evading endpoint detection on the target
+- Bypassing SSH authentication mechanisms
+
+### What Slipstream Does NOT Do
+
+Slipstream is an **SSH wrapper**, not an exploitation framework:
+
+- **Not a C2 framework** — No implant management, beaconing, or tasking
+- **Not a vulnerability scanner** — Does not probe for exploits
+- **Not an exploit framework** — No payload generation or injection
+- **Not anti-forensics** — Logs everything by design, does not tamper with target logs
+
+---
+
+## License
+
+MIT License
+
+Copyright &copy; 2026 Real-Fruit-Snacks
+
+```
+THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+THE AUTHORS ARE NOT LIABLE FOR ANY DAMAGES ARISING FROM USE.
+USE AT YOUR OWN RISK AND ONLY WITH PROPER AUTHORIZATION.
+```
+
+---
+
+## Resources
+
+- **GitHub**: [github.com/Real-Fruit-Snacks/Slipstream](https://github.com/Real-Fruit-Snacks/Slipstream)
+- **Issues**: [Report a Bug](https://github.com/Real-Fruit-Snacks/Slipstream/issues)
+- **Security**: [SECURITY.md](SECURITY.md)
+- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
 <div align="center">
 
-**Rust. Cross-platform. Zero config.**
+**Part of the Real-Fruit-Snacks water-themed security toolkit**
 
-*Slipstream — SSH wrapper for red team operations*
+[Aquifer](https://github.com/Real-Fruit-Snacks/Aquifer) • [Cascade](https://github.com/Real-Fruit-Snacks/Cascade) • [Conduit](https://github.com/Real-Fruit-Snacks/Conduit) • [Deadwater](https://github.com/Real-Fruit-Snacks/Deadwater) • [Deluge](https://github.com/Real-Fruit-Snacks/Deluge) • [Depth](https://github.com/Real-Fruit-Snacks/Depth) • [Dew](https://github.com/Real-Fruit-Snacks/Dew) • [Droplet](https://github.com/Real-Fruit-Snacks/Droplet) • [Fathom](https://github.com/Real-Fruit-Snacks/Fathom) • [Flux](https://github.com/Real-Fruit-Snacks/Flux) • [Grotto](https://github.com/Real-Fruit-Snacks/Grotto) • [HydroShot](https://github.com/Real-Fruit-Snacks/HydroShot) • [Maelstrom](https://github.com/Real-Fruit-Snacks/Maelstrom) • [Rapids](https://github.com/Real-Fruit-Snacks/Rapids) • [Ripple](https://github.com/Real-Fruit-Snacks/Ripple) • [Riptide](https://github.com/Real-Fruit-Snacks/Riptide) • [Runoff](https://github.com/Real-Fruit-Snacks/Runoff) • [Seep](https://github.com/Real-Fruit-Snacks/Seep) • [Shallows](https://github.com/Real-Fruit-Snacks/Shallows) • [Siphon](https://github.com/Real-Fruit-Snacks/Siphon) • **Slipstream** • [Spillway](https://github.com/Real-Fruit-Snacks/Spillway) • [Surge](https://github.com/Real-Fruit-Snacks/Surge) • [Tidemark](https://github.com/Real-Fruit-Snacks/Tidemark) • [Tidepool](https://github.com/Real-Fruit-Snacks/Tidepool) • [Undercurrent](https://github.com/Real-Fruit-Snacks/Undercurrent) • [Undertow](https://github.com/Real-Fruit-Snacks/Undertow) • [Vapor](https://github.com/Real-Fruit-Snacks/Vapor) • [Wellspring](https://github.com/Real-Fruit-Snacks/Wellspring) • [Whirlpool](https://github.com/Real-Fruit-Snacks/Whirlpool)
 
----
-
-**For authorized use only.** This tool is intended for legitimate security research, authorized penetration testing, and educational purposes. Unauthorized access to computer systems is illegal. Users are solely responsible for ensuring compliance with all applicable laws and obtaining proper authorization before use.
+*Remember: With great power comes great responsibility.*
 
 </div>
