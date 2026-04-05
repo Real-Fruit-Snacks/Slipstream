@@ -7,17 +7,16 @@
       <stop offset="100%" stop-color="#b4befe"/>
     </linearGradient>
 
-    <!-- Accent gradient: teal to sapphire -->
-    <linearGradient id="g2" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#94e2d5"/>
-      <stop offset="100%" stop-color="#74c7ec"/>
+    <!-- Upper wrapper gradient: sapphire to blue -->
+    <linearGradient id="gWrapUpper" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#74c7ec"/>
+      <stop offset="100%" stop-color="#89b4fa"/>
     </linearGradient>
 
-    <!-- Icon gradient: vertical for the mark -->
-    <linearGradient id="g3" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#89dceb"/>
-      <stop offset="50%" stop-color="#74c7ec"/>
-      <stop offset="100%" stop-color="#89b4fa"/>
+    <!-- Lower wrapper gradient: blue to lavender -->
+    <linearGradient id="gWrapLower" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#89b4fa"/>
+      <stop offset="100%" stop-color="#b4befe"/>
     </linearGradient>
 
     <!-- Faint outer glow -->
@@ -40,35 +39,49 @@
     <path d="M 80 14 L 134 42 L 134 98 L 80 126 L 26 98 L 26 42 Z"
           fill="#74c7ec" opacity="0.04"/>
 
-    <!-- Flow stream 1: top-left to bottom-right (forward data — SSH out) -->
-    <path d="M 36 42 C 52 32, 65 58, 80 48 C 95 38, 108 62, 124 52"
-          stroke="url(#g2)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9"/>
+    <!-- === THE WRAPPER DESIGN === -->
 
-    <!-- Flow stream 2: bottom-left to top-right (return data — SSH back) -->
-    <path d="M 36 88 C 52 98, 65 72, 80 82 C 95 92, 108 68, 124 78"
-          stroke="url(#g1)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9"/>
+    <!-- Center horizontal arrow — the SSH passthrough (teal) -->
+    <line x1="34" y1="70" x2="122" y2="70"
+          stroke="#94e2d5" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+    <!-- Arrowhead -->
+    <path d="M 118 65 L 126 70 L 118 75" stroke="#94e2d5" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
 
-    <!-- Center crossing point — bright node -->
-    <circle cx="80" cy="65" r="5" fill="url(#g3)" opacity="0.9"/>
-    <circle cx="80" cy="65" r="2.5" fill="#1e1e2e"/>
-    <circle cx="80" cy="65" r="8" fill="none" stroke="#74c7ec" stroke-width="0.5" opacity="0.3"/>
+    <!-- Upper wrapper curve — swoops down from above to touch center, then back up -->
+    <path d="M 32 38 C 48 36, 52 54, 62 70 C 72 86, 76 70, 80 70 C 84 70, 88 54, 98 70 C 108 86, 112 36, 128 38"
+          stroke="url(#gWrapUpper)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.85"/>
 
-    <!-- Entry/exit nodes — small, clean -->
-    <circle cx="36" cy="42" r="3" fill="#94e2d5" opacity="0.7"/>
-    <circle cx="124" cy="52" r="3" fill="#74c7ec" opacity="0.7"/>
-    <circle cx="36" cy="88" r="3" fill="#89b4fa" opacity="0.7"/>
-    <circle cx="124" cy="78" r="3" fill="#b4befe" opacity="0.7"/>
+    <!-- Lower wrapper curve — swoops up from below to touch center, then back down -->
+    <path d="M 32 102 C 48 104, 52 86, 62 70 C 72 54, 76 70, 80 70 C 84 70, 88 86, 98 70 C 108 54, 112 104, 128 102"
+          stroke="url(#gWrapLower)" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.85"/>
 
-    <!-- Subtle flow particles — static dots along the paths -->
-    <circle cx="50" cy="37" r="1.5" fill="#94e2d5" opacity="0.5"/>
-    <circle cx="65" cy="50" r="1.2" fill="#74c7ec" opacity="0.4"/>
-    <circle cx="95" cy="42" r="1.5" fill="#89b4fa" opacity="0.5"/>
-    <circle cx="112" cy="55" r="1.2" fill="#74c7ec" opacity="0.4"/>
+    <!-- Intercept nodes — where wrapper touches center line (! command intercept points) -->
+    <circle cx="62" cy="70" r="3" fill="#74c7ec" opacity="0.95"/>
+    <circle cx="80" cy="70" r="3" fill="#74c7ec" opacity="0.95"/>
+    <circle cx="98" cy="70" r="3" fill="#74c7ec" opacity="0.95"/>
 
-    <circle cx="50" cy="93" r="1.5" fill="#89b4fa" opacity="0.5"/>
-    <circle cx="65" cy="78" r="1.2" fill="#74c7ec" opacity="0.4"/>
-    <circle cx="95" cy="86" r="1.5" fill="#b4befe" opacity="0.5"/>
-    <circle cx="112" cy="72" r="1.2" fill="#89b4fa" opacity="0.4"/>
+    <!-- Entry node (left, teal) -->
+    <circle cx="34" cy="70" r="3" fill="#94e2d5" opacity="0.8"/>
+
+    <!-- Exit node (right, lavender) -->
+    <circle cx="126" cy="70" r="3" fill="#b4befe" opacity="0.8"/>
+
+    <!-- Subtle particle dots along upper wrapper path -->
+    <circle cx="42" cy="38" r="1.5" fill="#74c7ec" opacity="0.5"/>
+    <circle cx="54" cy="52" r="1.2" fill="#89b4fa" opacity="0.4"/>
+    <circle cx="72" cy="80" r="1.2" fill="#74c7ec" opacity="0.35"/>
+    <circle cx="90" cy="58" r="1.2" fill="#89b4fa" opacity="0.4"/>
+    <circle cx="108" cy="48" r="1.5" fill="#74c7ec" opacity="0.5"/>
+    <circle cx="120" cy="38" r="1.2" fill="#89b4fa" opacity="0.4"/>
+
+    <!-- Subtle particle dots along lower wrapper path -->
+    <circle cx="42" cy="102" r="1.5" fill="#89b4fa" opacity="0.5"/>
+    <circle cx="54" cy="88" r="1.2" fill="#b4befe" opacity="0.4"/>
+    <circle cx="72" cy="58" r="1.2" fill="#89b4fa" opacity="0.35"/>
+    <circle cx="90" cy="82" r="1.2" fill="#b4befe" opacity="0.4"/>
+    <circle cx="108" cy="92" r="1.5" fill="#89b4fa" opacity="0.5"/>
+    <circle cx="120" cy="102" r="1.2" fill="#b4befe" opacity="0.4"/>
 
     <!-- Corner accents on hex -->
     <circle cx="80" cy="6" r="2" fill="#89dceb" opacity="0.3"/>
